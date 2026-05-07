@@ -1,1661 +1,534 @@
--- ╔════════════════════════════════════════════════════════════════╗
--- ║          🍀 LUCKY BLOCK HUB v2.5 - ANTI-CHEAT BYPASS          ║
--- ║                      Made by: Rocha                           ║
--- ║                Advanced Anti-Cheat Testing Tool               ║
--- ╚════════════════════════════════════════════════════════════════╝
 
--- ==================== CONFIG & SERVICES ====================
+-- =============================================
+--          ROCHA HUB - Kick a Lucky Block
+--          Rayfield | Sistema 100% Original
+-- =============================================
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local VirtualUser = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local GuiService = game:GetService("GuiService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local PlayerGui = player:WaitForChild("PlayerGui")
-local character = player.Character or player.CharacterAdded:Wait()
 
--- ==================== ANTI-CHEAT BYPASS SYSTEMS ====================
+-- ==================== ANTI-AFK ====================
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
 
--- 1️⃣ PHYSICS SPOOFING
-local PhysicsSpoof = {
-    enabled = false,
-    randomDelay = function() return math.random(50, 200) / 1000 end,
-    randomVelocity = function() return math.random(-10, 10) / 100 end,
-    
-    apply = function(self, hrp)
-        if not self.enabled or not hrp then return end
-        pcall(function()
-            -- Adicionar ruído físico aleatório
-            hrp.Velocity = hrp.Velocity + Vector3.new(
-                self.randomVelocity(),
-                self.randomVelocity(),
-                self.randomVelocity()
-            )
-        end)
+pcall(function()
+    for _, connection in pairs(getconnections(player.Idled)) do
+        connection:Disable()
     end
-}
+end)
 
--- 2️⃣ HUMANOID STATE MASKING
-local HumanoidSpoof = {
-    enabled = false,
-    mask = function(self, hum)
-        if not self.enabled or not hum then return end
-        pcall(function()
-            -- Mascarar estado humanóide
-            hum:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        end)
-    end
-}
-
--- 3️⃣ NETWORK DELAY SIMULATION
-local NetworkDelay = {
-    baseDelay = 0.05,
-    randomDelay = function() return math.random(20, 80) / 1000 end,
-    
-    apply = function(self)
-        return self.baseDelay + self.randomDelay()
-    end
-}
-
--- 4️⃣ MOVEMENT PATTERN RANDOMIZATION
-local MovementPattern = {
-    lastDirection = Vector3.new(0, 0, 0),
-    changeThreshold = 0.3,
-    
-    getRandomDirection = function(self, targetPos, currentPos)
-        local direction = (targetPos - currentPos).Unit
-        
-        -- Adicionar variação aleatória ao movimento
-        if math.random() < self.changeThreshold then
-            direction = direction + Vector3.new(
-                math.random(-30, 30) / 100,
-                0,
-                math.random(-30, 30) / 100
-            )
-        end
-        
-        self.lastDirection = direction
-        return direction.Unit
-    end
-}
-
--- 5️⃣ ANIMATION DESYNC (evita detectar animações suspeitas)
-local AnimationDesync = {
-    enabled = false,
-    desyncAmount = 0.3,
-    
-    apply = function(self, char)
-        if not self.enabled or not char then return end
-        pcall(function()
-            local humanoid = char:FindFirstChild("Humanoid")
-            if humanoid then
-                for _, anim in pairs(humanoid:GetPlayingAnimationTracks()) do
-                    -- Dessincroniazar animação
-                    anim:AdjustSpeed(1 + self.desyncAmount)
-                end
-            end
-        end)
-    end
-}
-
--- 6️⃣ TELEPORT SPOOFING (simula movimento gradual) - VELOCIDADE EQUILIBRADA
-local TeleportSpoof = {
-    stepDistance = 10,  -- Equilibrado entre velocidade e suavidade
-    stepDelay = 0.03,   -- Delay moderado para não ser instantâneo
-    
-    gradualTP = function(self, hrp, targetCFrame)
-        if not (hrp and hrp.Parent) then return false end
-        
-        local startPos = hrp.Position
-        local targetPos = targetCFrame.Position
-        local distance = (targetPos - startPos).Magnitude
-        local steps = math.ceil(distance / self.stepDistance)
-        
-        for i = 1, steps do
-            if not (hrp and hrp.Parent) then break end
-            
-            local progress = i / steps
-            local intermediateCFrame = CFrame.new(startPos:Lerp(targetPos, progress)) * targetCFrame.Rotation
-            
-            pcall(function()
-                hrp.CFrame = intermediateCFrame
-                hrp.Velocity = Vector3.new(0, 0, 0)
-            end)
-            
-            task.wait(self.stepDelay)
-        end
-        
-        return true
-    end
-}
-
--- 7️⃣ REQUEST TIMING RANDOMIZATION
-local RequestTiming = {
-    baseDelay = 0.1,
-    variance = 0.05,
-    
-    getDelay = function(self)
-        local randomVariance = (math.random() - 0.5) * 2 * self.variance
-        return self.baseDelay + randomVariance
-    end
-}
-
--- 8️⃣ DETECTION EVASION (evita padrões óbvios)
-local DetectionEvasion = {
-    perfectKickCount = 0,
-    lastKickTime = 0,
-    minTimeBetweenKicks = 2, -- MODIFICADO: 2 segundos entre chutes
-    
-    shouldKick = function(self)
-        local currentTime = tick()
-        
-        -- Evitar múltiplos chutes perfeitos em sequência
-        if currentTime - self.lastKickTime < self.minTimeBetweenKicks then
-            return false
-        end
-        
-        -- Variar modo de chute para não ser óbvio
-        if self.perfectKickCount > 3 then
-            self.perfectKickCount = 0
-            return false
-        end
-        
-        self.lastKickTime = currentTime
-        self.perfectKickCount = self.perfectKickCount + 1
-        return true
-    end,
-    
-    getRandomKickMode = function(self)
-        if math.random() < 0.8 then
-            return "Perfect"
-        else
-            local modes = {"Excellent", "Great", "Perfect"}
-            return modes[math.random(#modes)]
-        end
-    end
-}
-
--- 9️⃣ ANTI-AFK SYSTEM
-local AntiAFK = {
-    enabled = false,
-    lastActivityTime = tick(),
-    inactivityThreshold = 600, -- 10 minutos
-    
-    getRandomMovement = function(self)
-        return Vector3.new(
-            math.random(-50, 50) / 100,
-            0,
-            math.random(-50, 50) / 100
-        )
-    end,
-    
-    moveRandomly = function(self, hrp, hum)
-        if not (hrp and hum and hum.Health > 0) then return end
-        
-        -- Movimento aleatório pequeno
-        local randomDir = self:getRandomMovement()
-        hum:Move(randomDir, true)
-    end,
-    
-    jumpRandomly = function(self, hum)
-        if not (hum and hum.Health > 0) then return end
-        
-        -- Pular aleatoriamente
-        if math.random() < 0.3 then
-            hum:Jump()
-        end
-    end,
-    
-    turnPlayer = function(self, hrp)
-        if not hrp then return end
-        
-        -- Girar player aleatoriamente
-        local randomAngle = math.random(0, 360)
-        hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(randomAngle), 0)
-    end
-}
-
--- ==================== GAME VARIABLES ====================
-local gameConfig = {
-    fixedYPos = 3,
-    debugMode = false,
-    autoRetryDelay = 0.4,
-    teleportSafety = true,
-    safeZoneRadius = 50, -- NOVO: Raio da zona segura
-    slowWalkSpeed = 10, -- NOVO: Velocidade lenta perto da zona
-    normalWalkSpeed = 16, -- NOVO: Velocidade normal
-    
-    -- BYPASS SETTINGS
-    usePhysicsSpoof = true,
-    useHumanoidSpoof = true,
-    useNetworkDelay = true,
-    useMovementPattern = true,
-    useAnimationDesync = false,
-    useTeleportSpoof = true,
-    useRequestTiming = true,
-    useDetectionEvasion = true,
-    useAntiAFK = true
-}
-
--- ==================== STATE MANAGEMENT ====================
-local state = {
-    -- Auto Systems
-    autoKick = false,
-    autoTrain = false,
-    autoCollect = false,
-    autoUpgrade = false,
-    autoBuyWeight = false,
-    antiAFK = false,
-    autoBrainrot = false,
-    
-    -- Settings
-    customSpeed = 50,
-    speedEnabled = false,
-    kickMode = "Perfect",
-    targetWeight = "Wooden Stick",
-    targetUpgrade = "1",
-    lockedPlot = nil,
-    
-    -- Mutations
-    targetMutations = {},
-    mutationList = {"Normal","Golden","Diamond","Plasma","Molten","Radioactive","Shadow","Electrified","Rainbow","Virus"},
-    
-    -- Stats
-    totalKicks = 0,
-    totalCollected = 0,
-    totalUpgrades = 0,
-    totalBrainrot = 0,
-    sessionStartTime = tick(),
-    
-    -- Internal
-    tickIDs = {
-        autoKick = 0,
-        autoTrain = 0,
-        autoCollect = 0,
-        autoUpgrade = 0,
-        autoBuyWeight = 0,
-        speedControl = 0,
-        bypassLoop = 0,
-        antiAFKLoop = 0,
-        autoBrainrot = 0,
-        safeZoneLoop = 0
-    },
-    
-    -- NOVO: Cooldown de chute
-    lastKickTime = 0,
-    kickCooldown = 2
-}
-
-local kickValues = {
-    ["Perfect"] = 1,
-    ["Excellent"] = 0.867,
-    ["Great"] = 0.635,
-    ["Mid"] = 0.264,
-    ["Bad"] = 0.067
-}
-
-local validWeights = {
-    ["Wooden Stick"] = true,
-    ["Copper Plate"] = true,
-    ["Stone Block"] = true,
-    ["Bone Barbell"] = true,
-    ["Bone Barbel"] = true,
-    ["Donut Barbell"] = true,
-    ["Ice Barbell"] = true,
-    ["Iron Plate"] = true,
-    ["Heaven Plate"] = true,
-    ["Golden Barbell"] = true,
-    ["Giant Gold Star Barbell"] = true,
-    ["Neon Pulse"] = true,
-    ["Mega Golden Barbell"] = true
-}
-
--- ==================== NETWORK INITIALIZATION ====================
-local Net
-local function initNetwork()
-    local success = pcall(function()
-        Net = game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Network")
-    end)
-    return success and Net or nil
-end
-
-Net = initNetwork()
-
--- ==================== RAYFIELD LIBRARY ====================
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-    Name = "🍀  ROCHA Hub v2.5",
-    LoadingTitle = "maked by rocha",
-    LoadingSubtitle = "Loading Advanced Anti-Cheat Bypass...",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "LuckyBlockHubv25",
-        FileName = "Config"
-    },
-    Discord = {Enabled = false},
-    KeySystem = false
-})
-
--- ==================== UTILITY FUNCTIONS ====================
-
-local function debugLog(message)
-    if gameConfig.debugMode then
-        print("[LBH-BYPASS] " .. message)
+-- ==================== LIMPAR GUI ====================
+for _, child in pairs(PlayerGui:GetChildren()) do
+    if child.Name == "ROCHA_HUB" or child.Name == "FARTEZ_LUCKY_HUB" then
+        child:Destroy()
     end
 end
 
-local function notify(title, content, duration)
-    duration = duration or 3
-    Rayfield:Notify({
-        Title = title,
-        Content = content,
-        Duration = duration,
-        Image = 4483362458,
-    })
-end
+-- ==================== NETWORK ====================
+local Network = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Network")
 
-local function getCharacter()
+-- ==================== CONFIG ====================
+local kickValues = {Perfect = 1, Excellent = 0.867, Great = 0.635, Mid = 0.264, Bad = 0.067}
+local kickMode = "Perfect"
+
+local targetPets = {}
+local targetMutations = {}
+local targetSellPets = {}
+local targetSellBuffs = {}
+
+local autoKickEnabled = false
+local autoKickCounter = 0
+local autoTrainEnabled = false
+local autoTrainCounter = 0
+local autoCollectEnabled = false
+local lockedPlot = nil
+local instantGrabEnabled = false
+local autoUpgradeEnabled = false
+local selectedUpgrade = "1"
+local selectedWeight = "Golden Barbell"
+local autoBuyEnabled = false
+local autoSellEnabled = false
+
+local webhookURL = ""
+local webhookEnabled = false
+local customSpeed = 50
+local useCustomSpeed = false
+local fixedY = 3
+
+-- ==================== PET DATA ====================
+local petData = {
+    Common = {"Noobini Pizzanini", "Tim Cheese", "LiriIi LariIa", "Talpa Di Fero", "Fruli Frula", "pipi Kiwi"},
+    Rare = {"Gangster Footera", "Bobrito Bandito", "Boneca Ambalabu", "Ta Ta Ta Ta Sahur", "Ballerina Cappuccina", "Brr Brr Patapim", "Cappuccino Assassino", "Cacto Hipopotamo"},
+    Epic = {"Madung", "Waterdino", "Pesto Mortioni", "Pannaburro", "Mangolini Parrocini", "Orcalero", "John Pork", "Gattatino Nyanino"},
+    Legendary = {"Chimpanzini Bananini", "Plan Red", "Plan Blue", "Capi Taco", "Trulimero Trulicana", "Bambini Crostini", "Elefantucci Bananucci", "Bananita Dolphinita", "Salamino Pinguino"},
+    Mythic = {"Penguino Cocosino", "67", "Burbaloni Luliloli", "Chef Crabracadabra", "Capybara Eggplant", "Bangello", "Elefanto Frigo", "Rinooccio Veidini", "Glorbo Fruttodrillo"},
+    Godly = {"Udin Din Din Dun", "Pandaccini Bananini", "Octopusini Bluberini", "Strawberelli Flamingelli", "Sigma Boy", "Frigo Camelo", "Orangutini Ananasini", "Rhino Toasterino", "Bombardiro Crocodilo"},
+    Secret = {"Bombini Gusini", "Tuff Toucan", "Fryuro", "Burguro", "Guest 666", "Zibra Zubra Zibralini", "Cavallo Virtuso", "Gorillo Watermelondrillo", "Cocofanto Elefanto"},
+    Divine = {"Girafa Celeste", "Tralalero Tralala", "Tralalerita Tralala", "Peant jarro", "Dipperi Chiperini", "Rexosaurus", "1X1X1X1", "Matteo"},
+    Hacked = {"Alessio", "Tripi Tropi Tropa Tripa", "Torrtuginni Dragonfruitini", "Tictac Sahur", "Cactus Pingu", "Los Primos Blue", "La Vacca Saturno Saturnita", "Agaitihi La Palini"},
+    OG = {"Karkerkar Kurkur", "Compactororni Diskaloni", "Blackhole Goat", "Cappuccino Clownino", "Nuclearo Dinossauro", "Los Nooo My Hotspotsitos", "Chillin Chilli", "Crazylone Pizaione", "Corn Sahur", "Meowl", "Strawberry Elephant"},
+    Celestial = {"Dragonfrutina Dolphinita", "Guerriro Digitale", "Chicleteira Bicicleteira", "Pot Hotspot", "Krupuk Pagi Pagi", "Beluga Beluga", "Tralaledon", "Anpalı Babel", "Ketupat Kepat", "Mastodontico Telepiedone"}
+}
+
+local rarityList = {"Common", "Rare", "Epic", "Legendary", "Mythic", "Godly", "Secret", "Divine", "Hacked", "OG", "Celestial"}
+local mutationList = {"Normal", "Golden", "Diamond", "Plasma", "Molten", "Radioactive", "Shadow", "Electrified", "Rainbow", "Virus"}
+local buffList = {"Normal", "Golden", "Diamond", "Plasma", "Molten", "Radioactive", "Shadow", "Electrified", "Rainbow"}
+local mutationDetectList = {"Golden", "Diamond", "Plasma", "Molten", "Radioactive", "Shadow", "Electrified", "Rainbow"}
+
+local weightList = {"Wooden Stick", "Bone Barbell", "Stone Block", "Copper Plate", "Iron Plate", "Ice Barbell", "Donut Barbell", "Golden Barbell", "Heaven Plate", "Mega Golden Barbell", "Neon Pulse", "Giant Gold Star Barbell"}
+
+-- ==================== FUNÇÕES DO SISTEMA ORIGINAL ====================
+local function teleportTo(cframe)
     local char = player.Character
-    if not char or not char.Parent then
-        char = player.CharacterAdded:Wait()
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then hrp.CFrame = cframe end
+end
+
+local function tweenMove(hrp, humanoid, targetPos)
+    if not (hrp and humanoid and humanoid.Health > 0) then return end
+    local targetCFrame = CFrame.new(targetPos.X, fixedY, targetPos.Z)
+    local distance = (hrp.Position - targetCFrame.Position).Magnitude
+    local speed = (useCustomSpeed and customSpeed) or math.max(humanoid.WalkSpeed, 50)
+    local tweenTime = distance / speed
+    hrp.Anchored = true
+    local tween = TweenService:Create(hrp, TweenInfo.new(tweenTime, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
+    tween:Play()
+    tween.Completed:Wait()
+    if hrp and hrp.Parent then hrp.Anchored = false end
+end
+
+local function forceClick(button)
+    if not button or not button.Parent then return end
+    if getconnections then
+        for _, c in pairs(getconnections(button.MouseButton1Down)) do c:Fire() end
+        for _, c in pairs(getconnections(button.MouseButton1Click)) do c:Fire() end
     end
-    return char
+    pcall(function() button:Activate() end)
 end
 
-local function getHRP()
-    local char = getCharacter()
-    return char:FindFirstChild("HumanoidRootPart")
-end
-
-local function getHumanoid()
-    local char = getCharacter()
-    return char:FindFirstChild("Humanoid")
-end
-
--- ==================== SAFE ZONE SYSTEM ====================
-
-local function safeZoneLoop()
-    state.tickIDs.safeZoneLoop = state.tickIDs.safeZoneLoop + 1
-    local currentTickID = state.tickIDs.safeZoneLoop
-    
-    task.spawn(function()
-        while currentTickID == state.tickIDs.safeZoneLoop do
+local function sendWebhook(title, description, color, forceOverride)
+    if webhookURL == "" then return end
+    if not webhookEnabled and not forceOverride then return end
+    local httpRequest = request or http_request or (syn and syn.request)
+    if httpRequest then
+        local payload = {embeds = {{title = title, description = description, color = color, footer = {text = "ROCHA HUB | " .. os.date("%X")}}}}
+        task.spawn(function()
             pcall(function()
-                local hrp = getHRP()
-                local hum = getHumanoid()
-                
-                if hrp and hum then
-                    local kickPos = workspace:FindFirstChild("Areas") and workspace.Areas:FindFirstChild("KickReady")
-                    
-                    if kickPos then
-                        local kickCFrame = kickPos:IsA("BasePart") and kickPos.CFrame or kickPos:GetPivot()
-                        local distance = (hrp.Position - kickCFrame.Position).Magnitude
-                        
-                        -- Se estiver perto da zona segura
-                        if distance < gameConfig.safeZoneRadius then
-                            -- Andar devagar
-                            hum.WalkSpeed = gameConfig.slowWalkSpeed
-                            debugLog("Perto da zona - Velocidade lenta: " .. gameConfig.slowWalkSpeed)
-                        else
-                            -- Velocidade normal
-                            if not state.speedEnabled then
-                                hum.WalkSpeed = gameConfig.normalWalkSpeed
-                            end
-                        end
-                    end
-                end
+                httpRequest({Url = webhookURL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(payload)})
             end)
-            
-            task.wait(0.1)
-        end
-    end)
-end
-
--- ==================== ADVANCED BYPASS FUNCTIONS ====================
-
-local function applyBypassLoop()
-    state.tickIDs.bypassLoop = state.tickIDs.bypassLoop + 1
-    local currentTickID = state.tickIDs.bypassLoop
-    
-    task.spawn(function()
-        while currentTickID == state.tickIDs.bypassLoop do
-            pcall(function()
-                local hrp = getHRP()
-                local hum = getHumanoid()
-                local char = getCharacter()
-                
-                if hrp and hum and char then
-                    -- Aplicar physics spoof
-                    if gameConfig.usePhysicsSpoof then
-                        PhysicsSpoof:apply(hrp)
-                    end
-                    
-                    -- Aplicar humanoid spoof
-                    if gameConfig.useHumanoidSpoof then
-                        HumanoidSpoof:mask(hum)
-                    end
-                    
-                    -- Aplicar animation desync
-                    if gameConfig.useAnimationDesync then
-                        AnimationDesync:apply(char)
-                    end
-                end
-            end)
-            
-            task.wait(0.05)
-        end
-    end)
-end
-
-local function antiAFKLoop()
-    state.tickIDs.antiAFKLoop = state.tickIDs.antiAFKLoop + 1
-    local currentTickID = state.tickIDs.antiAFKLoop
-    
-    if not state.antiAFK then return end
-    
-    task.spawn(function()
-        while state.antiAFK and currentTickID == state.tickIDs.antiAFKLoop do
-            pcall(function()
-                local hrp = getHRP()
-                local hum = getHumanoid()
-                
-                if hrp and hum and hum.Health > 0 then
-                    -- Movimento aleatório pequeno
-                    AntiAFK:moveRandomly(hrp, hum)
-                    
-                    -- Pulo aleatório ocasional
-                    AntiAFK:jumpRandomly(hum)
-                    
-                    -- Girar jogador ocasionalmente
-                    if math.random() < 0.1 then
-                        AntiAFK:turnPlayer(hrp)
-                    end
-                    
-                    debugLog("Anti-AFK: Atividade detectada")
-                end
-            end)
-            
-            -- Fazer movimentos a cada 5-15 segundos
-            task.wait(math.random(5, 15))
-        end
-    end)
-end
-
-local function safeTP(targetCFrame)
-    if not gameConfig.teleportSafety then
-        local hrp = getHRP()
-        if hrp then
-            hrp.CFrame = targetCFrame
-        end
-        return
+        end)
     end
-    
-    local hrp = getHRP()
-    if not hrp then return end
-    
-    pcall(function()
-        if gameConfig.useTeleportSpoof then
-            -- Usar teleporte gradual para evitar detecção
-            TeleportSpoof:gradualTP(hrp, targetCFrame)
-        else
-            hrp.Velocity = Vector3.new(0, 0, 0)
-            hrp.CFrame = targetCFrame
-        end
-    end)
 end
 
-local function smoothFly(targetPos, speedOverride)
-    local hrp = getHRP()
-    local hum = getHumanoid()
-    
-    if not (hrp and hum and hum.Health > 0) then return false end
-    
-    local targetCFrame = CFrame.new(targetPos.X, gameConfig.fixedYPos, targetPos.Z)
-    local dist = (hrp.Position - targetCFrame.Position).Magnitude
-    local flySpeed = speedOverride or (state.speedEnabled and state.customSpeed or math.max(hum.WalkSpeed, 50))
-    local timeToFly = math.max(dist / flySpeed, 0.1)
-    
-    pcall(function()
-        if gameConfig.useTeleportSpoof then
-            TeleportSpoof:gradualTP(hrp, targetCFrame)
-        else
-            hrp.Anchored = true
-            local tween = TweenService:Create(hrp, TweenInfo.new(timeToFly, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
-            tween:Play()
-            tween.Completed:Wait()
-            if hrp and hrp.Parent then
-                hrp.Anchored = false
-            end
-        end
-    end)
-    
-    return true
-end
-
-local function forceClick(target)
-    if not target or not target.Parent then return end
-    
-    pcall(function()
-        if getconnections then
-            for _, c in pairs(getconnections(target.MouseButton1Down)) do c:Fire() end
-            for _, c in pairs(getconnections(target.MouseButton1Click)) do c:Fire() end
-            for _, c in pairs(getconnections(target.Activated)) do c:Fire() end
-        end
-    end)
-    
-    pcall(function()
-        if firesignal then
-            firesignal(target.MouseButton1Down)
-            firesignal(target.MouseButton1Click)
-            firesignal(target.Activated)
-        end
-    end)
-    
-    pcall(function()
-        if target:IsA("GuiButton") then
-            target:Activate()
-        end
-    end)
-    
-    pcall(function()
-        if target:IsA("GuiObject") and target.AbsoluteSize.X > 0 and target.Visible then
-            local vim = game:GetService("VirtualInputManager")
-            local guiInset = game:GetService("GuiService"):GetGuiInset()
-            local clickX = target.AbsolutePosition.X + (target.AbsoluteSize.X / 2) + guiInset.X
-            local clickY = target.AbsolutePosition.Y + (target.AbsoluteSize.Y / 2) + guiInset.Y
-            
-            vim:SendMouseButtonEvent(clickX, clickY, 0, true, game, 1)
-            task.wait(gameConfig.useRequestTiming and RequestTiming:getDelay() or 0.01)
-            vim:SendMouseButtonEvent(clickX, clickY, 0, false, game, 1)
-        end
-    end)
-end
-
--- ==================== AUTO SYSTEMS WITH BYPASS ====================
-
-local function autoKickSystem()
-    state.tickIDs.autoKick = state.tickIDs.autoKick + 1
-    local currentTickID = state.tickIDs.autoKick
-    
-    if not state.autoKick then return end
-    
+-- ==================== AUTO KICK (ORIGINAL COMPLETO) ====================
+local function startAutoKick()
+    autoKickCounter = autoKickCounter + 1
+    local currentCounter = autoKickCounter
     task.spawn(function()
-        while state.autoKick and currentTickID == state.tickIDs.autoKick do
+        while autoKickEnabled and currentCounter == autoKickCounter do
             pcall(function()
-                local hrp = getHRP()
-                local hum = getHumanoid()
-                
-                if not (hrp and hum and hum.Health > 0) then return end
-                
-                local kickPos = workspace:FindFirstChild("Areas") and workspace.Areas:FindFirstChild("KickReady")
-                if not kickPos then return end
-                
-                local targetCF = kickPos:IsA("BasePart") and kickPos.CFrame or kickPos:GetPivot()
-                
-                if (hrp.Position - targetCF.Position).Magnitude > 5 then
-                    safeTP(targetCF + Vector3.new(0, 3, 0))
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local humanoid = char and char:FindFirstChild("Humanoid")
+                if not (hrp and humanoid and humanoid.Health > 0) then return end
+
+                local kickReady = workspace:FindFirstChild("Areas") and workspace.Areas:FindFirstChild("KickReady")
+                if not kickReady then return end
+                local kickCFrame = (kickReady:IsA("BasePart") and kickReady.CFrame) or kickReady:GetPivot()
+
+                if (hrp.Position - kickCFrame.Position).Magnitude > 5 then
+                    teleportTo(kickCFrame + Vector3.new(0, 3, 0))
                 end
-                
-                task.wait(gameConfig.useNetworkDelay and NetworkDelay:apply() or 0.5)
+
+                task.wait(0.5)
                 local startPos = hrp.Position
                 local wasTeleported = false
                 local HUD = PlayerGui:FindFirstChild("HUD")
-                
+
                 for i = 1, 150 do
                     task.wait(0.1)
-                    
-                    if not (hrp and hrp.Parent) or hum.Health <= 0 then return end
-                    
+                    if not char or not char.Parent or humanoid.Health <= 0 then return end
                     if (hrp.Position - startPos).Magnitude > 30 then
                         wasTeleported = true
                         break
                     end
-                    
-                    local KickButton = HUD and HUD:FindFirstChild("KickButton")
-                    if KickButton and KickButton.Visible and Net then
-                        -- NOVO: Verificar cooldown de 2 segundos
-                        local currentTime = tick()
-                        if currentTime - state.lastKickTime < state.kickCooldown then
-                            task.wait(0.5)
-                            continue
-                        end
-                        
-                        -- Usar detecção evasão para variar chutes
-                        if gameConfig.useDetectionEvasion and not DetectionEvasion:shouldKick() then
-                            task.wait(0.5)
-                            continue
-                        end
-                        
-                        local kickMode = gameConfig.useDetectionEvasion and DetectionEvasion:getRandomKickMode() or state.kickMode
-                        debugLog("Chute: " .. kickMode .. " | Cooldown até: " .. string.format("%.1f", state.kickCooldown) .. "s")
-                        
-                        Net.rev_KickEvent:FireServer(kickValues[kickMode] or 1)
-                        state.totalKicks = state.totalKicks + 1
-                        state.lastKickTime = currentTime -- NOVO: Atualizar tempo do último chute
-                        
-                        task.wait(gameConfig.useRequestTiming and RequestTiming:getDelay() or 0.5)
+                    local kickButton = HUD and HUD:FindFirstChild("KickButton")
+                    if kickButton and kickButton.Visible then
+                        Network.rev_KickEvent:FireServer(kickValues[kickMode] or 1)
+                        task.wait(0.5)
                     end
                 end
-                
+
                 if not wasTeleported then return end
-                task.wait(gameConfig.useNetworkDelay and NetworkDelay:apply() or 0.5)
-                
+                task.wait(0.5)
+
+                local monsterFound = false
                 local spawnedMonster = nil
-                local hasMonster = false
-                
                 for i = 1, 40 do
                     task.wait(0.2)
-                    
-                    local closestDist = 60
-                    
                     for _, obj in pairs(workspace.Debris:GetChildren()) do
                         if obj:IsA("Model") and obj.PrimaryPart then
                             local dist = (obj.PrimaryPart.Position - hrp.Position).Magnitude
-                            if dist < closestDist then
-                                closestDist = dist
-                                hasMonster = true
+                            if dist < 60 then
+                                monsterFound = true
                                 spawnedMonster = obj
+                                break
                             end
                         end
                     end
-                    
-                    if hasMonster then break end
+                    if monsterFound then break end
                 end
-                
-                if not (hasMonster and spawnedMonster) then return end
-                task.wait(gameConfig.useNetworkDelay and NetworkDelay:apply() or 0.5)
-                
-                local isDesired = false
-                local hasSelection = false
-                
-                for mut, isActive in pairs(state.targetMutations) do
-                    if isActive then
-                        hasSelection = true
-                        
-                        if mut == "Normal" then
-                            isDesired = true
+
+                if monsterFound and spawnedMonster then
+                    task.wait(0.5)
+
+                    local isMutationDesired = false
+                    local hasMutationFilter = false
+                    for mutation, enabled in pairs(targetMutations) do
+                        if enabled then
+                            hasMutationFilter = true
+                            if mutation == "Normal" or string.find(string.lower(spawnedMonster.Name), string.lower(mutation)) then
+                                isMutationDesired = true
+                                break
+                            end
+                        end
+                    end
+
+                    local isPetDesired = false
+                    local hasPetFilter = false
+                    for petName, enabled in pairs(targetPets) do
+                        if enabled then
+                            hasPetFilter = true
+                            if string.find(string.lower(spawnedMonster.Name), string.lower(petName)) then
+                                isPetDesired = true
+                                break
+                            end
+                        end
+                    end
+
+                    local shouldFlee = (hasMutationFilter and not isMutationDesired) or (hasPetFilter and not isPetDesired)
+
+                    if shouldFlee then
+                        local waves = workspace:FindFirstChild("Waves")
+                        local wavePos = waves and (waves.Position or waves:GetPivot().Position)
+                        if wavePos then tweenMove(hrp, humanoid, wavePos) end
+                    elseif spawnedMonster and not spawnedMonster:GetAttribute("WebhookSent") then
+                        spawnedMonster:SetAttribute("WebhookSent", true)
+                        local monsterName = spawnedMonster.Name
+                        local mutationStr = "Normal"
+                        sendWebhook("👀 Target Found!", "**Pet:** "..monsterName.."\n**Player:** "..player.Name, 3447003, false)
+                        tweenMove(hrp, humanoid, kickCFrame.Position)
+                    end
+                end
+            end)
+            task.wait(0.4)
+        end
+    end)
+end
+
+-- ==================== AUTO TRAIN (ORIGINAL) ====================
+local function startAutoTrain()
+    autoTrainCounter = autoTrainCounter + 1
+    local currentCounter = autoTrainCounter
+    task.spawn(function()
+        while autoTrainEnabled and currentCounter == autoTrainCounter do
+            pcall(function()
+                local char = player.Character
+                local humanoid = char and char:FindFirstChild("Humanoid")
+                local currentTool = char and char:FindFirstChildOfClass("Tool")
+                if not currentTool and humanoid then
+                    local backpack = player:FindFirstChild("Backpack")
+                    for _, tool in pairs(backpack:GetChildren()) do
+                        if tool:IsA("Tool") then
+                            humanoid:EquipTool(tool)
                             break
                         end
-                        
-                        for _, child in pairs(spawnedMonster:GetChildren()) do
-                            if string.find(string.lower(child.Name), string.lower(mut)) then
-                                isDesired = true
-                                break
-                            end
-                        end
-                        
-                        if isDesired then break end
                     end
-                end
-                
-                if hasSelection and not isDesired then
-                    local waves = workspace:FindFirstChild("Waves")
-                    local wavePos = nil
-                    
-                    if waves then
-                        if waves:IsA("BasePart") then
-                            wavePos = waves.Position
-                        elseif waves:IsA("Model") then
-                            wavePos = waves:GetPivot().Position
-                        else
-                            local part = waves:FindFirstChildWhichIsA("BasePart", true)
-                            if part then wavePos = part.Position end
-                        end
-                    end
-                    
-                    if wavePos then
-                        debugLog("Monster indesejado - Fugindo")
-                        smoothFly(wavePos)
-                    else
-                        smoothFly(targetCF.Position)
-                    end
-                else
-                    debugLog("Monster desejado - Voltando")
-                    smoothFly(targetCF.Position)
-                end
-                
-            end)
-            
-            task.wait(gameConfig.autoRetryDelay)
-        end
-    end)
-end
-
-local function autoTrainSystem()
-    state.tickIDs.autoTrain = state.tickIDs.autoTrain + 1
-    local currentTickID = state.tickIDs.autoTrain
-    
-    if not state.autoTrain then return end
-    
-    task.spawn(function()
-        while state.autoTrain and currentTickID == state.tickIDs.autoTrain do
-            pcall(function()
-                local char = getCharacter()
-                local hum = char:FindFirstChild("Humanoid")
-                local backpack = player:FindFirstChild("Backpack")
-                local currentTool = char:FindFirstChildOfClass("Tool")
-                
-                if not currentTool then
-                    local slot1 = PlayerGui:FindFirstChild("Backpack")
-                        and PlayerGui.Backpack:FindFirstChild("Bar")
-                        and PlayerGui.Backpack.Bar:FindFirstChild("Slot1")
-                    
-                    if slot1 then
-                        forceClick(slot1)
-                        if slot1:FindFirstChild("ToolImage") then
-                            forceClick(slot1.ToolImage)
-                        end
-                    end
-                    
-                    task.wait(gameConfig.useNetworkDelay and NetworkDelay:apply() or 0.1)
-                    
-                    if not char:FindFirstChildOfClass("Tool") and backpack and hum then
-                        for _, tool in pairs(backpack:GetChildren()) do
-                            if tool:IsA("Tool") and validWeights[tool.Name] then
-                                hum:EquipTool(tool)
-                                break
-                            end
-                        end
-                    end
-                else
+                elseif currentTool then
                     currentTool:Activate()
                 end
-                
             end)
-            
-            pcall(function()
-                local kickUpgrades = PlayerGui:FindFirstChild("KickUpgrades")
-                if kickUpgrades then
-                    for _, bonus in pairs(kickUpgrades:GetChildren()) do
-                        if (bonus.Name == "Bonus" or bonus.Name == "PopBonus") and bonus.Visible then
-                            forceClick(bonus)
-                            for _, child in ipairs(bonus:GetDescendants()) do
-                                if child:IsA("GuiButton") or child:IsA("ImageLabel") then
-                                    forceClick(child)
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-            
-            task.wait(gameConfig.useNetworkDelay and NetworkDelay:apply() or 0.1)
+            task.wait(0.08)
         end
     end)
 end
 
-local function autoCollectSystem()
-    state.tickIDs.autoCollect = state.tickIDs.autoCollect + 1
-    local currentTickID = state.tickIDs.autoCollect
-    
-    if not state.autoCollect then return end
-    
+-- ==================== AUTO COLLECT & SELL ====================
+local function startAutoCollect()
     task.spawn(function()
-        local hrp = getHRP()
-        
-        if not state.lockedPlot and hrp then
-            local closestDist = math.huge
-            for _, plot in pairs(workspace:WaitForChild("Plots"):GetChildren()) do
-                if plot:IsA("Model") or plot:IsA("Folder") then
-                    local dist = (hrp.Position - plot:GetPivot().Position).Magnitude
-                    if dist < closestDist then
-                        closestDist = dist
-                        state.lockedPlot = plot
+        while autoCollectEnabled do
+            if lockedPlot then
+                local buttons = lockedPlot:FindFirstChild("Buttons")
+                if buttons then
+                    for i = 1, 30 do
+                        local slot = buttons:FindFirstChild("Slot" .. i)
+                        if slot then
+                            local part = slot:IsA("BasePart") and slot or slot:FindFirstChildWhichIsA("BasePart")
+                            if part then
+                                teleportTo(part.CFrame + Vector3.new(0,2,0))
+                                Network.rev_B_Collect:FireServer(i)
+                            end
+                        end
                     end
                 end
             end
+            task.wait(1.4)
         end
-        
-        while state.autoCollect and currentTickID == state.tickIDs.autoCollect do
+    end)
+end
+
+local function startAutoSell()
+    task.spawn(function()
+        while autoSellEnabled do
             pcall(function()
-                if state.lockedPlot then
-                    local buttonsFolder = state.lockedPlot:FindFirstChild("Buttons")
-                    if buttonsFolder then
-                        for i = 1, 30 do
-                            if not state.autoCollect or currentTickID ~= state.tickIDs.autoCollect then break end
-                            
-                            local slotPart = buttonsFolder:FindFirstChild("Slot" .. i)
-                            if slotPart then
-                                local targetCFrame
-                                
-                                if slotPart:IsA("BasePart") then
-                                    targetCFrame = slotPart.CFrame
-                                elseif slotPart:IsA("Model") and slotPart.PrimaryPart then
-                                    targetCFrame = slotPart.PrimaryPart.CFrame
-                                else
-                                    local part = slotPart:FindFirstChildWhichIsA("BasePart")
-                                    if part then targetCFrame = part.CFrame end
-                                end
-                                
-                                if targetCFrame then
-                                    safeTP(targetCFrame + Vector3.new(0, 1.5, 0))
-                                    task.wait(gameConfig.useNetworkDelay and NetworkDelay:apply() or 0.1)
-                                    
-                                    if Net then
-                                        Net.rev_B_Collect:FireServer(i)
-                                        state.totalCollected = state.totalCollected + 1
-                                    end
-                                end
-                            end
+                local backpack = player:FindFirstChild("Backpack")
+                local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+                if backpack and humanoid then
+                    for _, tool in pairs(backpack:GetChildren()) do
+                        if targetSellPets[tool.Name] then
+                            humanoid:EquipTool(tool)
+                            task.wait(0.2)
+                            ReplicatedStorage.Shared.Packages.Network.ref_B_Sell:InvokeServer()
+                            task.wait(0.3)
                         end
                     end
                 end
             end)
-            
-            task.wait(1.5)
+            task.wait(1)
         end
     end)
 end
 
-local function autoUpgradeSystem()
-    state.tickIDs.autoUpgrade = state.tickIDs.autoUpgrade + 1
-    local currentTickID = state.tickIDs.autoUpgrade
-    
-    if not state.autoUpgrade then return end
-    
-    task.spawn(function()
-        while state.autoUpgrade and currentTickID == state.tickIDs.autoUpgrade do
-            pcall(function()
-                if Net then
-                    Net.rev_B_Upgrade:FireServer(tonumber(state.targetUpgrade) or 1)
-                    state.totalUpgrades = state.totalUpgrades + 1
-                end
-            end)
-            
-            task.wait(gameConfig.useRequestTiming and RequestTiming:getDelay() or 0.2)
-        end
-    end)
-end
+-- ==================== RAYFIELD INTERFACE ====================
+local Window = Rayfield:CreateWindow({
+    Name = "ROCHA HUB",
+    LoadingTitle = "ROCHA HUB",
+    LoadingSubtitle = "Kick a Lucky Block",
+    ConfigurationSaving = {Enabled = true, FolderName = "RochaHub", FileName = "Config"}
+})
 
-local function autoBuyWeightSystem()
-    state.tickIDs.autoBuyWeight = state.tickIDs.autoBuyWeight + 1
-    local currentTickID = state.tickIDs.autoBuyWeight
-    
-    if not state.autoBuyWeight then return end
-    
-    task.spawn(function()
-        while state.autoBuyWeight and currentTickID == state.tickIDs.autoBuyWeight do
-            pcall(function()
-                if Net then
-                    local cleanName = string.match(state.targetWeight, "^(.-)%s+%S+$") or state.targetWeight
-                    Net.rev_Shop_Buy:FireServer("WeightShop", cleanName)
-                end
-            end)
-            
-            task.wait(gameConfig.useRequestTiming and RequestTiming:getDelay() or 0.5)
-        end
-    end)
-end
-
-local function autoBrainrotSystem()
-    state.tickIDs.autoBrainrot = state.tickIDs.autoBrainrot + 1
-    local currentTickID = state.tickIDs.autoBrainrot
-    
-    if not state.autoBrainrot then return end
-    
-    task.spawn(function()
-        while state.autoBrainrot and currentTickID == state.tickIDs.autoBrainrot do
-            pcall(function()
-                local hrp = getHRP()
-                local hum = getHumanoid()
-                
-                if not (hrp and hum and hum.Health > 0) then return end
-                
-                -- Procurar por Brainrot no workspace
-                local brainrotFound = false
-                
-                for _, debris in pairs(workspace.Debris:GetChildren()) do
-                    if debris:IsA("Model") and string.find(string.lower(debris.Name), "brainrot") then
-                        local brainrotPart = debris.PrimaryPart or debris:FindFirstChildWhichIsA("BasePart")
-                        
-                        if brainrotPart then
-                            -- Teleportar para o Brainrot (mais alto)
-                            local targetCFrame = brainrotPart.CFrame + Vector3.new(0, 10, 0)
-                            safeTP(targetCFrame)
-                            
-                            task.wait(1)
-                            
-                            -- Interagir com o Brainrot (tentar pegar)
-                            if Net then
-                                -- Procurar event de coleta similar ao usado em KickReady
-                                pcall(function()
-                                    -- Tenta pegar direto com proximity
-                                    local proximity = debris:FindFirstChildOfClass("ProximityPrompt")
-                                    if proximity then
-                                        proximity:InputHoldBegin()
-                                        task.wait(0.1)
-                                        proximity:InputHoldEnd()
-                                    end
-                                end)
-                                
-                                -- Fallback: enviar comando de coleta genérico
-                                pcall(function()
-                                    if Net.rev_PickupItem then
-                                        Net.rev_PickupItem:FireServer(debris)
-                                    end
-                                end)
-                                
-                                -- Outro fallback: usar evento de toque
-                                pcall(function()
-                                    if debris:FindFirstChild("TouchInterest") then
-                                        for _, touchPart in pairs(debris:GetChildren()) do
-                                            if touchPart:IsA("BasePart") then
-                                                firetouchinterest(hrp, touchPart, 0)
-                                                task.wait(0.1)
-                                                firetouchinterest(hrp, touchPart, 1)
-                                            end
-                                        end
-                                    end
-                                end)
-                            end
-                            
-                            brainrotFound = true
-                            state.totalBrainrot = state.totalBrainrot + 1
-                            notify("✅ Brainrot", "Brainrot coletado!", 1)
-                            
-                            task.wait(1)
-                            break
-                        end
-                    end
-                end
-                
-                if not brainrotFound then
-                    -- Se não achou, volta para KickReady
-                    local kickPos = workspace:FindFirstChild("Areas") and workspace.Areas:FindFirstChild("KickReady")
-                    if kickPos then
-                        local targetCF = kickPos:IsA("BasePart") and kickPos.CFrame or kickPos:GetPivot()
-                        safeTP(targetCF + Vector3.new(0, 3, 0))
-                    end
-                end
-                
-            end)
-            
-            task.wait(2) -- Procurar a cada 2 segundos
-        end
-    end)
-end
-
-local function speedControlSystem()
-    state.tickIDs.speedControl = state.tickIDs.speedControl + 1
-    local currentTickID = state.tickIDs.speedControl
-    
-    if not state.speedEnabled then return end
-    
-    task.spawn(function()
-        while state.speedEnabled and currentTickID == state.tickIDs.speedControl do
-            pcall(function()
-                local hum = getHumanoid()
-                if hum then
-                    hum.WalkSpeed = state.customSpeed
-                end
-            end)
-            
-            task.wait(0.1)
-        end
-    end)
-end
-
--- ==================== UI TABS ====================
-
-local MainTab = Window:CreateTab("🚀 Principal", 4483362458)
-local CollectTab = Window:CreateTab("💰 Coleta", 4483362458)
-local ShopTab = Window:CreateTab("🛒 Loja", 4483362458)
-local StatsTab = Window:CreateTab("📊 Stats", 4483362458)
-local SettingsTab = Window:CreateTab("⚙️ Config", 4483362458)
-local BypassTab = Window:CreateTab("🛡️ Bypass", 4483362458)
+local MainTab = Window:CreateTab("🏠 Main")
+local CollectTab = Window:CreateTab("💰 Collect")
+local UpgradeTab = Window:CreateTab("⬆️ Upgrades")
+local BuyTab = Window:CreateTab("🛒 Shop")
+local SellTab = Window:CreateTab("💸 Sell")
+local InfoTab = Window:CreateTab("⚙️ Info")
 
 -- ==================== MAIN TAB ====================
+MainTab:CreateSection("🎯 Alvos")
 
-MainTab:CreateSection("🧬 Mutações Alvo")
+-- ==================== PETS SECTION COM CHECKBOXES ====================
+MainTab:CreateLabel("Selecione os Pets:")
 
-for _, mutation in ipairs(state.mutationList) do
+local petCheckboxes = {}
+local petToggleStates = {}
+
+for rarity, pets in pairs(petData) do
+    MainTab:CreateLabel("━━━ " .. rarity .. " ━━━")
+    for _, pet in ipairs(pets) do
+        local label = "[" .. rarity .. "] " .. pet
+        petCheckboxes[label] = {pet = pet, rarity = rarity}
+        petToggleStates[pet] = false
+        
+        MainTab:CreateToggle({
+            Name = pet,
+            CurrentValue = false,
+            Callback = function(value)
+                petToggleStates[pet] = value
+                targetPets[pet] = value
+                if value then
+                    print("✅ Pet selecionado: " .. pet)
+                else
+                    print("❌ Pet removido: " .. pet)
+                end
+            end
+        })
+    end
+end
+
+-- ==================== MUTATIONS SECTION COM CHECKBOXES ====================
+MainTab:CreateSection("🧬 Mutações")
+MainTab:CreateLabel("Selecione as Mutações:")
+
+local mutationToggleStates = {}
+for _, mutation in ipairs(mutationList) do
+    mutationToggleStates[mutation] = false
     MainTab:CreateToggle({
         Name = mutation,
         CurrentValue = false,
-        Flag = "Mutation_" .. mutation,
-        Callback = function(Value)
-            state.targetMutations[mutation] = Value
-        end,
+        Callback = function(value)
+            mutationToggleStates[mutation] = value
+            targetMutations[mutation] = value
+            if value then
+                print("✅ Mutação selecionada: " .. mutation)
+            else
+                print("❌ Mutação removida: " .. mutation)
+            end
+        end
     })
 end
 
-MainTab:CreateSection("🎯 Sistema de Chute")
+-- ==================== AUTO FEATURES ====================
+MainTab:CreateSection("⚙️ Automações")
 
-MainTab:CreateDropdown({
-    Name = "Modo de Chute",
-    Options = {"Perfect", "Excellent", "Great", "Mid", "Bad"},
-    CurrentOption = {"Perfect"},
-    MultipleOptions = false,
-    Flag = "KickMode",
-    Callback = function(Options)
-        state.kickMode = Options[1] or "Perfect"
-    end,
+MainTab:CreateToggle({
+    Name = "Auto Kick",
+    CurrentValue = false,
+    Callback = function(v)
+        autoKickEnabled = v
+        if v then
+            startAutoKick()
+            print("✅ Auto Kick ativado")
+        else
+            print("❌ Auto Kick desativado")
+        end
+    end
 })
 
 MainTab:CreateToggle({
-    Name = "Auto Chute ✨",
+    Name = "Auto Train",
     CurrentValue = false,
-    Flag = "AutoKickToggle",
-    Callback = function(Value)
-        state.autoKick = Value
-        if Value then
-            notify("✅ Auto Chute", "Sistema ativado! (Cooldown 2s)", 2)
-            autoKickSystem()
+    Callback = function(v)
+        autoTrainEnabled = v
+        if v then
+            startAutoTrain()
+            print("✅ Auto Train ativado")
         else
-            notify("❌ Auto Chute", "Sistema desativado", 1)
+            print("❌ Auto Train desativado")
         end
-    end,
+    end
 })
-
-MainTab:CreateSection("🏋️ Sistema de Treino")
 
 MainTab:CreateToggle({
-    Name = "Auto Treino & Coleta Bônus",
+    Name = "Velocidade Customizada",
     CurrentValue = false,
-    Flag = "AutoTrainToggle",
-    Callback = function(Value)
-        state.autoTrain = Value
-        if Value then
-            notify("✅ Auto Treino", "Treinamento iniciado!", 2)
-            autoTrainSystem()
-        else
-            notify("❌ Auto Treino", "Treinamento parado", 1)
-        end
-    end,
+    Callback = function(v)
+        useCustomSpeed = v
+    end
 })
 
-MainTab:CreateSection("🧠 Brainrot")
-
-MainTab:CreateToggle({
-    Name = "Auto Brainrot 🧠",
-    CurrentValue = false,
-    Flag = "AutoBrainrotToggle",
-    Callback = function(Value)
-        state.autoBrainrot = Value
-        if Value then
-            notify("✅ Auto Brainrot", "Procurando Brainrot...", 2)
-            autoBrainrotSystem()
-        else
-            notify("❌ Auto Brainrot", "Sistema desativado", 1)
-        end
-    end,
+MainTab:CreateSlider({
+    Name = "Velocidade",
+    Range = {16, 500},
+    Increment = 1,
+    CurrentValue = 50,
+    Callback = function(v)
+        customSpeed = v
+    end
 })
-
-MainTab:CreateSection("📍 Teleporte")
 
 MainTab:CreateButton({
-    Name = "TP KickReady ⚡",
+    Name = "TP KickReady",
     Callback = function()
         pcall(function()
-            local kickReady = workspace.Areas:FindFirstChild("KickReady")
-            if kickReady then
-                safeTP(kickReady.CFrame + Vector3.new(0, 5, 0))
-                notify("✅ Teleportado", "Você está em KickReady", 1)
-            end
+            teleportTo(workspace.Areas.KickReady.CFrame + Vector3.new(0,5,0))
         end)
-    end,
+    end
+})
+
+MainTab:CreateDropdown({
+    Name = "Kick Mode",
+    Options = {"Perfect", "Excellent", "Great", "Mid", "Bad"},
+    Default = "Perfect",
+    Callback = function(v)
+        kickMode = v
+    end
 })
 
 -- ==================== COLLECT TAB ====================
-
-CollectTab:CreateSection("🎯 Auto Coleta")
-
-CollectTab:CreateToggle({
-    Name = "Auto Coleta Dinheiro 🤑",
-    CurrentValue = false,
-    Flag = "AutoCollectToggle",
-    Callback = function(Value)
-        state.autoCollect = Value
-        if Value then
-            notify("✅ Auto Coleta", "Coleta iniciada!", 2)
-            autoCollectSystem()
-        else
-            notify("❌ Auto Coleta", "Coleta parada", 1)
-            state.lockedPlot = nil
-        end
-    end,
-})
+CollectTab:CreateSection("💰 Auto Collect")
 
 CollectTab:CreateToggle({
-    Name = "Pega Instantânea (Sem Atraso)",
+    Name = "Auto Collect",
     CurrentValue = false,
-    Flag = "InstantGrab",
-    Callback = function(Value)
-        if Value then
-            task.spawn(function()
-                while Value do
-                    pcall(function()
-                        for _, obj in pairs(workspace:GetDescendants()) do
-                            if obj:IsA("ProximityPrompt") then
-                                obj.HoldDuration = 0
-                            end
-                        end
-                    end)
-                    task.wait(1)
-                end
-            end)
+    Callback = function(v)
+        autoCollectEnabled = v
+        if v then
+            startAutoCollect()
         end
-    end,
+    end
 })
 
-CollectTab:CreateSection("💳 Ações Rápidas")
+-- ==================== SELL TAB ====================
+SellTab:CreateSection("💸 Auto Sell")
 
-CollectTab:CreateButton({
-    Name = "Comprar Velocidade x1 👟",
-    Callback = function()
-        if Net then
-            pcall(function()
-                Net.rev_SPEED_UPGRADE:FireServer(1)
-                notify("✅ Compra", "Velocidade x1 comprada!", 1)
-            end)
-        else
-            notify("❌ Erro", "Network não encontrado", 2)
-        end
-    end,
-})
-
-CollectTab:CreateButton({
-    Name = "Renascença ♻️",
-    Callback = function()
-        if Net then
-            pcall(function()
-                Net.rev_RebirthRequest:FireServer()
-                notify("✅ Renascença", "Renascimento ativado!", 1)
-            end)
-        else
-            notify("❌ Erro", "Network não encontrado", 2)
-        end
-    end,
-})
-
--- ==================== SHOP TAB ====================
-
-ShopTab:CreateSection("🛍️ Loja de Pesos")
-
-local weightList = {
-    "Wooden Stick", "Bone Barbell", "Stone Block", "Copper Plate", "Iron Plate",
-    "Ice Barbell", "Donut Barbell", "Golden Barbell", "Heaven Plate",
-    "Mega Golden Barbell", "Neon Pulse", "Giant Gold Star Barbell"
-}
-
-ShopTab:CreateDropdown({
-    Name = "Selecione Peso",
-    Options = weightList,
-    CurrentOption = {"Wooden Stick"},
-    MultipleOptions = false,
-    Flag = "SelectWeight",
-    Callback = function(Options)
-        state.targetWeight = Options[1] or "Wooden Stick"
-    end,
-})
-
-ShopTab:CreateButton({
-    Name = "Comprar Peso 🛒",
-    Callback = function()
-        if Net then
-            pcall(function()
-                local cleanName = string.match(state.targetWeight, "^(.-)%s+%S+$") or state.targetWeight
-                Net.rev_Shop_Buy:FireServer("WeightShop", cleanName)
-                notify("✅ Compra", "Peso comprado!", 1)
-            end)
-        else
-            notify("❌ Erro", "Network não encontrado", 2)
-        end
-    end,
-})
-
-ShopTab:CreateToggle({
-    Name = "Auto Compra Peso Selecionado 🛒",
-    CurrentValue = false,
-    Flag = "AutoBuyToggle",
-    Callback = function(Value)
-        state.autoBuyWeight = Value
-        if Value then
-            notify("✅ Auto Compra", "Compra automática iniciada!", 2)
-            autoBuyWeightSystem()
-        else
-            notify("❌ Auto Compra", "Compra automática parada", 1)
-        end
-    end,
-})
-
-ShopTab:CreateSection("⬆️ Upgrades")
-
-local upList = {}
-for i = 1, 30 do table.insert(upList, tostring(i)) end
-
-ShopTab:CreateDropdown({
-    Name = "Selecione Upgrade",
-    Options = upList,
-    CurrentOption = {"1"},
-    MultipleOptions = false,
-    Flag = "SelectUpgrade",
-    Callback = function(Options)
-        state.targetUpgrade = Options[1] or "1"
-    end,
-})
-
-ShopTab:CreateToggle({
-    Name = "Auto Upgrade Selecionado ⚡",
-    CurrentValue = false,
-    Flag = "AutoUpgradeToggle",
-    Callback = function(Value)
-        state.autoUpgrade = Value
-        if Value then
-            notify("✅ Auto Upgrade", "Upgrade automático iniciado!", 2)
-            autoUpgradeSystem()
-        else
-            notify("❌ Auto Upgrade", "Upgrade automático parado", 1)
-        end
-    end,
-})
-
-ShopTab:CreateSection("⚠️ Perigoso")
-
-ShopTab:CreateButton({
-    Name = "Vender Tudo 💲",
-    Callback = function()
-        if Net then
-            pcall(function()
-                Net.ref_B_SellAll:InvokeServer()
-                notify("⚠️ Venda", "Todos os itens vendidos!", 2)
-            end)
-        else
-            notify("❌ Erro", "Network não encontrado", 2)
-        end
-    end,
-})
-
--- ==================== STATS TAB ====================
-
-StatsTab:CreateSection("📊 Estatísticas")
-
-local statsLabel = StatsTab:CreateLabel("Atualizando...")
-
-local function updateStats()
-    task.spawn(function()
-        while true do
-            task.wait(1)
-            pcall(function()
-                local char = player.Character
-                local hum = char and char:FindFirstChild("Humanoid")
-                local sessionTime = math.floor(tick() - state.sessionStartTime)
-                local hours = math.floor(sessionTime / 3600)
-                local minutes = math.floor((sessionTime % 3600) / 60)
-                local seconds = sessionTime % 60
-                
-                -- Calcular tempo até próximo chute
-                local timeSinceKick = tick() - state.lastKickTime
-                local timeUntilNextKick = math.max(0, state.kickCooldown - timeSinceKick)
-                
-                local info = "⏱️ Tempo: " .. string.format("%02d:%02d:%02d", hours, minutes, seconds) .. "\n\n"
-                info = info .. "🎯 Chutes: " .. state.totalKicks .. "\n"
-                info = info .. "💰 Coletados: " .. state.totalCollected .. "\n"
-                info = info .. "⬆️ Upgrades: " .. state.totalUpgrades .. "\n"
-                info = info .. "🧠 Brainrot: " .. state.totalBrainrot .. "\n\n"
-                
-                -- Mostrar cooldown de chute
-                if state.autoKick then
-                    info = info .. "⏳ Próx. Chute: " .. string.format("%.1f", timeUntilNextKick) .. "s\n\n"
-                end
-                
-                info = info .. "Estado: "
-                if state.autoKick then info = info .. "[Chute✓] " end
-                if state.autoTrain then info = info .. "[Treino✓] " end
-                if state.autoCollect then info = info .. "[Coleta✓] " end
-                if state.autoUpgrade then info = info .. "[Upgrade✓] " end
-                if state.autoBuyWeight then info = info .. "[Compra✓] " end
-                if state.autoBrainrot then info = info .. "[Brainrot✓] " end
-                if state.antiAFK then info = info .. "[AntiAFK✓] " end
-                
-                if not (state.autoKick or state.autoTrain or state.autoCollect or state.autoUpgrade or state.autoBuyWeight or state.autoBrainrot or state.antiAFK) then
-                    info = info .. "[Standby]"
-                end
-                
-                if hum then
-                    info = info .. "\n\nHP: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
-                end
-                
-                statsLabel:Set(info)
-            end)
-        end
-    end)
+SellTab:CreateLabel("Selecione Pets para Vender:")
+local sellPetsFormatted = {}
+for rarity, pets in pairs(petData) do
+    for _, pet in ipairs(pets) do
+        table.insert(sellPetsFormatted, "[" .. rarity .. "] " .. pet)
+    end
 end
 
-updateStats()
-
--- ==================== SETTINGS TAB ====================
-
-SettingsTab:CreateSection("🏃 Velocidade")
-
-SettingsTab:CreateToggle({
-    Name = "Ativar Velocidade Customizada",
-    CurrentValue = false,
-    Flag = "SpeedToggle",
-    Callback = function(Value)
-        state.speedEnabled = Value
-        if Value then
-            speedControlSystem()
-            safeZoneLoop() -- NOVO: Ativar sistema de zona segura
-            notify("✅ Velocidade", "Velocidade customizada ativada", 1)
-        else
-            notify("❌ Velocidade", "Velocidade customizada desativada", 1)
+SellTab:CreateDropdown({
+    Name = "Pets para Vender",
+    Options = sellPetsFormatted,
+    Multi = true,
+    Default = {},
+    Callback = function(values)
+        targetSellPets = {}
+        for _, v in ipairs(values) do
+            local petName = v:match("%]%s(.+)")
+            if petName then
+                targetSellPets[petName] = true
+            end
         end
-    end,
-})
-
-SettingsTab:CreateSlider({
-    Name = "Valor Velocidade",
-    Min = 1,
-    Max = 1000,
-    Default = 50,
-    Color = Color3.fromRGB(255, 85, 127),
-    Flag = "SpeedValue",
-    Callback = function(Value)
-        state.customSpeed = Value
-    end,
-})
-
-SettingsTab:CreateSection("🔧 Configuração de Segurança")
-
-SettingsTab:CreateSlider({
-    Name = "Cooldown Chute (segundos)",
-    Min = 0.5,
-    Max = 5,
-    Default = 2,
-    Color = Color3.fromRGB(255, 85, 127),
-    Flag = "KickCooldown",
-    Callback = function(Value)
-        state.kickCooldown = Value
-        notify("⏱️ Cooldown", "Novo cooldown: " .. string.format("%.1f", Value) .. "s", 1)
-    end,
-})
-
-SettingsTab:CreateSlider({
-    Name = "Raio Zona Segura",
-    Min = 20,
-    Max = 100,
-    Default = 50,
-    Color = Color3.fromRGB(255, 85, 127),
-    Flag = "SafeZoneRadius",
-    Callback = function(Value)
-        gameConfig.safeZoneRadius = Value
-    end,
-})
-
-SettingsTab:CreateSlider({
-    Name = "Velocidade Lenta (perto da zona)",
-    Min = 1,
-    Max = 16,
-    Default = 10,
-    Color = Color3.fromRGB(255, 85, 127),
-    Flag = "SlowWalkSpeed",
-    Callback = function(Value)
-        gameConfig.slowWalkSpeed = Value
-    end,
-})
-
-SettingsTab:CreateSection("🔧 Configuração de Teleporte")
-
-SettingsTab:CreateSlider({
-    Name = "Velocidade do Teleporte",
-    Min = 0.01,
-    Max = 0.1,
-    Default = 0.03,
-    Color = Color3.fromRGB(255, 85, 127),
-    Flag = "TeleportSpeed",
-    Callback = function(Value)
-        TeleportSpoof.stepDelay = Value
-    end,
-})
-
-SettingsTab:CreateSlider({
-    Name = "Distância do Teleporte",
-    Min = 5,
-    Max = 50,
-    Default = 10,
-    Color = Color3.fromRGB(255, 85, 127),
-    Flag = "TeleportDistance",
-    Callback = function(Value)
-        TeleportSpoof.stepDistance = Value
-    end,
-})
-
-SettingsTab:CreateSlider({
-    Name = "Posição Y Fixa",
-    Min = 0,
-    Max = 50,
-    Default = 3,
-    Color = Color3.fromRGB(255, 85, 127),
-    Flag = "FixedY",
-    Callback = function(Value)
-        gameConfig.fixedYPos = Value
-    end,
-})
-
-SettingsTab:CreateToggle({
-    Name = "Modo Debug",
-    CurrentValue = false,
-    Flag = "DebugMode",
-    Callback = function(Value)
-        gameConfig.debugMode = Value
-    end,
-})
-
-SettingsTab:CreateToggle({
-    Name = "Segurança de Teleporte",
-    CurrentValue = true,
-    Flag = "TeleportSafety",
-    Callback = function(Value)
-        gameConfig.teleportSafety = Value
-    end,
-})
-
-SettingsTab:CreateSection("ℹ️ Sobre")
-
-SettingsTab:CreateParagraph({
-    Title = "🍀 Lucky Block Hub v2.5",
-    Content = "Ferramenta Profissional Anti-Cheat"
-})
-
-SettingsTab:CreateParagraph({
-    Title = "👥 Desenvolvedores",
-    Content = "Feito por: Rocha"
-})
-
-SettingsTab:CreateButton({
-    Name = "Parar Todos Sistemas",
-    Callback = function()
-        state.autoKick = false
-        state.autoTrain = false
-        state.autoCollect = false
-        state.autoUpgrade = false
-        state.autoBuyWeight = false
-        state.speedEnabled = false
-        state.antiAFK = false
-        state.autoBrainrot = false
-        notify("⚠️ Sistemas", "Todos os sistemas foram parados", 2)
-    end,
-})
-
--- ==================== BYPASS TAB ====================
-
-BypassTab:CreateSection("🛡️ Sistema de Bypass Anti-Cheat")
-
-BypassTab:CreateParagraph({
-    Title = "ℹ️ O que é Bypass?",
-    Content = "Ativa tecnologias avançadas para contornar sistemas anti-cheat, mantendo atividades disfarçadas de jogabilidade legítima."
-})
-
-BypassTab:CreateSection("🔬 Sistemas de Spoof")
-
-BypassTab:CreateToggle({
-    Name = "Physics Spoof 🔬",
-    CurrentValue = gameConfig.usePhysicsSpoof,
-    Flag = "PhysicsSpoof",
-    Callback = function(Value)
-        gameConfig.usePhysicsSpoof = Value
-        PhysicsSpoof.enabled = Value
-        if Value then
-            notify("✅ Physics Spoof", "Ruído físico ativado", 1)
-        else
-            notify("❌ Physics Spoof", "Ruído físico desativado", 1)
-        end
-    end,
-})
-
-BypassTab:CreateToggle({
-    Name = "Humanoid Spoof 🧬",
-    CurrentValue = gameConfig.useHumanoidSpoof,
-    Flag = "HumanoidSpoof",
-    Callback = function(Value)
-        gameConfig.useHumanoidSpoof = Value
-        HumanoidSpoof.enabled = Value
-        if Value then
-            notify("✅ Humanoid Spoof", "Estados mascarados", 1)
-        else
-            notify("❌ Humanoid Spoof", "Estados restaurados", 1)
-        end
-    end,
-})
-
-BypassTab:CreateToggle({
-    Name = "Animation Desync 🎬",
-    CurrentValue = gameConfig.useAnimationDesync,
-    Flag = "AnimationDesync",
-    Callback = function(Value)
-        gameConfig.useAnimationDesync = Value
-        AnimationDesync.enabled = Value
-        if Value then
-            notify("✅ Animation Desync", "Animações dessincronizadas", 1)
-        else
-            notify("❌ Animation Desync", "Animações sincronizadas", 1)
-        end
-    end,
-})
-
-BypassTab:CreateSection("📡 Sistemas de Rede")
-
-BypassTab:CreateToggle({
-    Name = "Network Delay 📡",
-    CurrentValue = gameConfig.useNetworkDelay,
-    Flag = "NetworkDelay",
-    Callback = function(Value)
-        gameConfig.useNetworkDelay = Value
-        if Value then
-            notify("✅ Network Delay", "Atrasos de rede simulados", 1)
-        else
-            notify("❌ Network Delay", "Atrasos desativados", 1)
-        end
-    end,
-})
-
-BypassTab:CreateToggle({
-    Name = "Request Timing ⏱️",
-    CurrentValue = gameConfig.useRequestTiming,
-    Flag = "RequestTiming",
-    Callback = function(Value)
-        gameConfig.useRequestTiming = Value
-        if Value then
-            notify("✅ Request Timing", "Timing aleatório ativado", 1)
-        else
-            notify("❌ Request Timing", "Timing desativado", 1)
-        end
-    end,
-})
-
-BypassTab:CreateToggle({
-    Name = "Teleport Spoof 🌀",
-    CurrentValue = gameConfig.useTeleportSpoof,
-    Flag = "TeleportSpoof",
-    Callback = function(Value)
-        gameConfig.useTeleportSpoof = Value
-        if Value then
-            notify("✅ Teleport Spoof", "Teleporte gradual ativado", 1)
-        else
-            notify("❌ Teleport Spoof", "Teleporte instantâneo", 1)
-        end
-    end,
-})
-
-BypassTab:CreateSection("👻 Evasão")
-
-BypassTab:CreateToggle({
-    Name = "Detection Evasion 👻",
-    CurrentValue = gameConfig.useDetectionEvasion,
-    Flag = "DetectionEvasion",
-    Callback = function(Value)
-        gameConfig.useDetectionEvasion = Value
-        if Value then
-            notify("✅ Detection Evasion", "Padrões variáveis", 1)
-        else
-            notify("❌ Detection Evasion", "Padrões fixos", 1)
-        end
-    end,
-})
-
-BypassTab:CreateSection("⏰ Anti-AFK")
-
-BypassTab:CreateToggle({
-    Name = "Anti-AFK 👻",
-    CurrentValue = false,
-    Flag = "AntiAFK",
-    Callback = function(Value)
-        state.antiAFK = Value
-        gameConfig.useAntiAFK = Value
-        if Value then
-            notify("✅ Anti-AFK", "Movimentos aleatórios ativados!", 2)
-            antiAFKLoop()
-        else
-            notify("❌ Anti-AFK", "Anti-AFK desativado", 1)
-        end
-    end,
-})
-
-BypassTab:CreateParagraph({
-    Title = "Como o Anti-AFK funciona?",
-    Content = "Simula movimentos aleatórios, pulos ocasionais e giros para manter o jogador ativo, evitando ser desconectado por inatividade."
-})
-
-BypassTab:CreateSection("📊 Status do Bypass")
-
-local bypassStatsLabel = BypassTab:CreateLabel("Carregando...")
-
-task.spawn(function()
-    while true do
-        task.wait(2)
-        pcall(function()
-            local info = "🔒 Sistemas Ativos:\n\n"
-            local count = 0
-            
-            if gameConfig.usePhysicsSpoof then info = info .. "✓ Physics Spoof\n" count = count + 1 end
-            if gameConfig.useHumanoidSpoof then info = info .. "✓ Humanoid Spoof\n" count = count + 1 end
-            if gameConfig.useNetworkDelay then info = info .. "✓ Network Delay\n" count = count + 1 end
-            if gameConfig.useTeleportSpoof then info = info .. "✓ Teleport Spoof\n" count = count + 1 end
-            if gameConfig.useRequestTiming then info = info .. "✓ Request Timing\n" count = count + 1 end
-            if gameConfig.useDetectionEvasion then info = info .. "✓ Detection Evasion\n" count = count + 1 end
-            if gameConfig.useAnimationDesync then info = info .. "✓ Animation Desync\n" count = count + 1 end
-            if state.antiAFK then info = info .. "✓ Anti-AFK\n" count = count + 1 end
-            
-            info = info .. "\n📊 Proteções: " .. count .. "/8"
-            
-            bypassStatsLabel:Set(info)
-        end)
     end
-end)
+})
 
--- ==================== INITIALIZATION ====================
+SellTab:CreateToggle({
+    Name = "Auto Sell",
+    CurrentValue = false,
+    Callback = function(v)
+        autoSellEnabled = v
+        if v then
+            startAutoSell()
+        end
+    end
+})
 
-applyBypassLoop()
-safeZoneLoop() -- NOVO: Ativar sistema de zona segura por padrão
+-- ==================== INFO TAB ====================
+InfoTab:CreateSection("ℹ️ Informações")
 
-notify("✅ Hub Carregado", "Lucky Block Hub v2.5 - Com Cooldown 2s!", 3)
-print("✅ Lucky Block Hub v2.5 carregado com sucesso!")
-print("⏳ Cooldown de 2 segundos entre chutes ativado!")
-print("🚶 Sistema de zona segura com velocidade lenta ativado!")
-print("🛡️ Sistema de Bypass Anti-Cheat ativado")
-print("👥 Feito por: Rocha")
+InfoTab:CreateLabel("ROCHA HUB v1.0")
+InfoTab:CreateLabel("Sistema completo com seleção de Pets e Mutações")
+InfoTab:CreateLabel("━━━━━━━━━━━━━━━━━━━━")
+InfoTab:CreateLabel("Pets Selecionados: 0")
+InfoTab:CreateLabel("Mutações Selecionadas: 0")
+
+local function updateInfoTab()
+    local selectedPets = 0
+    local selectedMutations = 0
+    
+    for _, enabled in pairs(targetPets) do
+        if enabled then selectedPets = selectedPets + 1 end
+    end
+    
+    for _, enabled in pairs(targetMutations) do
+        if enabled then selectedMutations = selectedMutations + 1 end
+    end
+    
+    InfoTab:CreateLabel("Pets Selecionados: " .. selectedPets)
+    InfoTab:CreateLabel("Mutações Selecionadas: " .. selectedMutations)
+end
+
+Rayfield:Notify({
+    Title = "ROCHA HUB",
+    Content = "✅ Carregado com sucesso!\n✨ Sistema completo restaurado\n📝 Selecione Pets e Mutações com os checkboxes",
+    Duration = 5
+})
+
+print("✅ ROCHA HUB - Rayfield | Sistema completo restaurado")
