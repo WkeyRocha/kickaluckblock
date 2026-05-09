@@ -1,8 +1,7 @@
-
--- =============================================
---          ROCHA HUB - Kick a Lucky Block
---          Rayfield | Sistema 100% Original
--- =============================================
+-- ==========================================================
+--               ROCHA HUB PREMIUM - V2.0
+--          Com Gerenciador de Pets e Sistema de Key
+-- ==========================================================
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -23,52 +22,30 @@ player.Idled:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
 end)
+pcall(function() for _, c in pairs(getconnections(player.Idled)) do c:Disable() end end)
 
-pcall(function()
-    for _, connection in pairs(getconnections(player.Idled)) do
-        connection:Disable()
-    end
-end)
-
--- ==================== LIMPAR GUI ====================
+-- ==================== LIMPEZA DE GUI ====================
 for _, child in pairs(PlayerGui:GetChildren()) do
-    if child.Name == "ROCHA_HUB" or child.Name == "FARTEZ_LUCKY_HUB" then
-        child:Destroy()
-    end
+    if child.Name == "ROCHA_PET_MANAGER" then child:Destroy() end
 end
 
--- ==================== NETWORK ====================
+-- ==================== NETWORK & VARIÁVEIS ====================
 local Network = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Network")
 
--- ==================== CONFIG ====================
 local kickValues = {Perfect = 1, Excellent = 0.867, Great = 0.635, Mid = 0.264, Bad = 0.067}
 local kickMode = "Perfect"
-
-local targetPets = {}
-local targetMutations = {}
-local targetSellPets = {}
-local targetSellBuffs = {}
-
-local autoKickEnabled = false
-local autoKickCounter = 0
-local autoTrainEnabled = false
-local autoTrainCounter = 0
-local autoCollectEnabled = false
-local lockedPlot = nil
-local instantGrabEnabled = false
-local autoUpgradeEnabled = false
-local selectedUpgrade = "1"
-local selectedWeight = "Golden Barbell"
-local autoBuyEnabled = false
-local autoSellEnabled = false
-
-local webhookURL = ""
-local webhookEnabled = false
 local customSpeed = 50
 local useCustomSpeed = false
 local fixedY = 3
 
--- ==================== PET DATA ====================
+local targetPets, targetMutations, targetSellPets = {}, {}, {}
+local autoKickEnabled, autoTrainEnabled, autoCollectEnabled, autoSellEnabled = false, false, false, false
+local autoKickCounter, autoTrainCounter = 0, 0
+local lockedPlot = nil
+
+local webhookURL = ""
+local webhookEnabled = false
+
 local petData = {
     Common = {"Noobini Pizzanini", "Tim Cheese", "LiriIi LariIa", "Talpa Di Fero", "Fruli Frula", "pipi Kiwi"},
     Rare = {"Gangster Footera", "Bobrito Bandito", "Boneca Ambalabu", "Ta Ta Ta Ta Sahur", "Ballerina Cappuccina", "Brr Brr Patapim", "Cappuccino Assassino", "Cacto Hipopotamo"},
@@ -82,18 +59,154 @@ local petData = {
     OG = {"Karkerkar Kurkur", "Compactororni Diskaloni", "Blackhole Goat", "Cappuccino Clownino", "Nuclearo Dinossauro", "Los Nooo My Hotspotsitos", "Chillin Chilli", "Crazylone Pizaione", "Corn Sahur", "Meowl", "Strawberry Elephant"},
     Celestial = {"Dragonfrutina Dolphinita", "Guerriro Digitale", "Chicleteira Bicicleteira", "Pot Hotspot", "Krupuk Pagi Pagi", "Beluga Beluga", "Tralaledon", "Anpalı Babel", "Ketupat Kepat", "Mastodontico Telepiedone"}
 }
-
 local rarityList = {"Common", "Rare", "Epic", "Legendary", "Mythic", "Godly", "Secret", "Divine", "Hacked", "OG", "Celestial"}
 local mutationList = {"Normal", "Golden", "Diamond", "Plasma", "Molten", "Radioactive", "Shadow", "Electrified", "Rainbow", "Virus"}
-local buffList = {"Normal", "Golden", "Diamond", "Plasma", "Molten", "Radioactive", "Shadow", "Electrified", "Rainbow"}
-local mutationDetectList = {"Golden", "Diamond", "Plasma", "Molten", "Radioactive", "Shadow", "Electrified", "Rainbow"}
 
-local weightList = {"Wooden Stick", "Bone Barbell", "Stone Block", "Copper Plate", "Iron Plate", "Ice Barbell", "Donut Barbell", "Golden Barbell", "Heaven Plate", "Mega Golden Barbell", "Neon Pulse", "Giant Gold Star Barbell"}
+for _, pets in pairs(petData) do
+    for _, pet in ipairs(pets) do targetPets[pet] = false end
+end
 
--- ==================== FUNÇÕES DO SISTEMA ORIGINAL ====================
+-- ==================== GERENCIADOR DE PETS NATIVO ====================
+local Theme = {
+    Bg = Color3.fromRGB(18, 18, 24),
+    Panel = Color3.fromRGB(25, 25, 33),
+    Stroke = Color3.fromRGB(45, 45, 60),
+    Accent = Color3.fromRGB(150, 50, 255),
+    Text = Color3.fromRGB(240, 240, 240),
+    TextDim = Color3.fromRGB(150, 150, 160)
+}
+
+local CustomPetUI = Instance.new("ScreenGui")
+CustomPetUI.Name = "ROCHA_PET_MANAGER"
+CustomPetUI.Parent = PlayerGui
+CustomPetUI.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = CustomPetUI
+MainFrame.BackgroundColor3 = Theme.Bg
+MainFrame.Position = UDim2.new(0.5, -280, 0.5, -200)
+MainFrame.Size = UDim2.new(0, 560, 0, 400)
+MainFrame.Visible = false
+MainFrame.Active = true
+MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+Instance.new("UIStroke", MainFrame).Color = Theme.Accent
+Instance.new("UIStroke", MainFrame).Thickness = 1.5
+
+local TitleBar = Instance.new("Frame")
+TitleBar.Parent = MainFrame
+TitleBar.BackgroundColor3 = Theme.Panel
+TitleBar.Size = UDim2.new(1, 0, 0, 45)
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
+
+local TitleText = Instance.new("TextLabel")
+TitleText.Parent = TitleBar
+TitleText.BackgroundTransparency = 1
+TitleText.Position = UDim2.new(0, 20, 0, 0)
+TitleText.Size = UDim2.new(0, 300, 1, 0)
+TitleText.Font = Enum.Font.GothamBold
+TitleText.Text = "💎 ROCHA HUB | Pet Manager"
+TitleText.TextColor3 = Theme.Accent
+TitleText.TextSize = 16
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Parent = TitleBar
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.Position = UDim2.new(1, -45, 0, 5)
+CloseBtn.Size = UDim2.new(0, 35, 0, 35)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Theme.TextDim
+CloseBtn.TextSize = 16
+CloseBtn.MouseButton1Click:Connect(function() 
+    MainFrame.Visible = false
+end)
+
+local LeftPanel = Instance.new("ScrollingFrame")
+LeftPanel.Parent = MainFrame
+LeftPanel.BackgroundColor3 = Theme.Panel
+LeftPanel.Position = UDim2.new(0, 15, 0, 60)
+LeftPanel.Size = UDim2.new(0, 150, 1, -75)
+LeftPanel.ScrollBarThickness = 2
+Instance.new("UICorner", LeftPanel).CornerRadius = UDim.new(0, 8)
+local LeftLayout = Instance.new("UIListLayout")
+LeftLayout.Parent = LeftPanel
+LeftLayout.Padding = UDim.new(0, 6)
+
+local RightPanel = Instance.new("ScrollingFrame")
+RightPanel.Parent = MainFrame
+RightPanel.BackgroundColor3 = Theme.Panel
+RightPanel.Position = UDim2.new(0, 180, 0, 60)
+RightPanel.Size = UDim2.new(1, -195, 1, -75)
+RightPanel.ScrollBarThickness = 2
+Instance.new("UICorner", RightPanel).CornerRadius = UDim.new(0, 8)
+local RightLayout = Instance.new("UIListLayout")
+RightLayout.Parent = RightPanel
+RightLayout.Padding = UDim.new(0, 6)
+
+local function LoadPetsForRarity(rarity)
+    for _, child in pairs(RightPanel:GetChildren()) do if child:IsA("Frame") then child:Destroy() end end
+    local pets = petData[rarity]
+    
+    for _, petName in ipairs(pets) do
+        local PetRow = Instance.new("Frame")
+        PetRow.Parent = RightPanel
+        PetRow.BackgroundColor3 = Theme.Bg
+        PetRow.Size = UDim2.new(1, -15, 0, 40)
+        Instance.new("UICorner", PetRow).CornerRadius = UDim.new(0, 6)
+
+        local PetLabel = Instance.new("TextLabel")
+        PetLabel.Parent = PetRow
+        PetLabel.BackgroundTransparency = 1
+        PetLabel.Position = UDim2.new(0, 15, 0, 0)
+        PetLabel.Size = UDim2.new(1, -60, 1, 0)
+        PetLabel.Font = Enum.Font.GothamSemibold
+        PetLabel.Text = petName
+        PetLabel.TextColor3 = Theme.Text
+        PetLabel.TextSize = 14
+        PetLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+        local ToggleBtn = Instance.new("TextButton")
+        ToggleBtn.Parent = PetRow
+        ToggleBtn.BackgroundColor3 = targetPets[petName] and Theme.Accent or Theme.Stroke
+        ToggleBtn.Position = UDim2.new(1, -40, 0.5, -12)
+        ToggleBtn.Size = UDim2.new(0, 24, 0, 24)
+        ToggleBtn.Text = ""
+        Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+
+        ToggleBtn.MouseButton1Click:Connect(function()
+            targetPets[petName] = not targetPets[petName]
+            ToggleBtn.BackgroundColor3 = targetPets[petName] and Theme.Accent or Theme.Stroke
+        end)
+    end
+    RightPanel.CanvasSize = UDim2.new(0, 0, 0, #pets * 46)
+end
+
+for _, rarity in ipairs(rarityList) do
+    local RarityBtn = Instance.new("TextButton")
+    RarityBtn.Parent = LeftPanel
+    RarityBtn.BackgroundColor3 = Theme.Bg
+    RarityBtn.Size = UDim2.new(1, -10, 0, 35)
+    RarityBtn.Font = Enum.Font.GothamBold
+    RarityBtn.Text = rarity
+    RarityBtn.TextColor3 = Theme.TextDim
+    RarityBtn.TextSize = 13
+    Instance.new("UICorner", RarityBtn).CornerRadius = UDim.new(0, 6)
+
+    RarityBtn.MouseButton1Click:Connect(function()
+        for _, btn in pairs(LeftPanel:GetChildren()) do
+            if btn:IsA("TextButton") then btn.BackgroundColor3 = Theme.Bg; btn.TextColor3 = Theme.TextDim end
+        end
+        RarityBtn.BackgroundColor3 = Theme.Accent; RarityBtn.TextColor3 = Theme.Text
+        LoadPetsForRarity(rarity)
+    end)
+end
+LeftPanel.CanvasSize = UDim2.new(0, 0, 0, #rarityList * 41)
+
+-- ==================== SISTEMAS DO SCRIPT ====================
 local function teleportTo(cframe)
-    local char = player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then hrp.CFrame = cframe end
 end
 
@@ -102,38 +215,24 @@ local function tweenMove(hrp, humanoid, targetPos)
     local targetCFrame = CFrame.new(targetPos.X, fixedY, targetPos.Z)
     local distance = (hrp.Position - targetCFrame.Position).Magnitude
     local speed = (useCustomSpeed and customSpeed) or math.max(humanoid.WalkSpeed, 50)
-    local tweenTime = distance / speed
     hrp.Anchored = true
-    local tween = TweenService:Create(hrp, TweenInfo.new(tweenTime, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
+    local tween = TweenService:Create(hrp, TweenInfo.new(distance / speed, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
     tween:Play()
     tween.Completed:Wait()
     if hrp and hrp.Parent then hrp.Anchored = false end
 end
 
-local function forceClick(button)
-    if not button or not button.Parent then return end
-    if getconnections then
-        for _, c in pairs(getconnections(button.MouseButton1Down)) do c:Fire() end
-        for _, c in pairs(getconnections(button.MouseButton1Click)) do c:Fire() end
-    end
-    pcall(function() button:Activate() end)
-end
-
-local function sendWebhook(title, description, color, forceOverride)
-    if webhookURL == "" then return end
-    if not webhookEnabled and not forceOverride then return end
+local function sendWebhook(title, description, color)
+    if webhookURL == "" or not webhookEnabled then return end
     local httpRequest = request or http_request or (syn and syn.request)
     if httpRequest then
         local payload = {embeds = {{title = title, description = description, color = color, footer = {text = "ROCHA HUB | " .. os.date("%X")}}}}
         task.spawn(function()
-            pcall(function()
-                httpRequest({Url = webhookURL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(payload)})
-            end)
+            pcall(function() httpRequest({Url = webhookURL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(payload)}) end)
         end)
     end
 end
 
--- ==================== AUTO KICK (ORIGINAL COMPLETO) ====================
 local function startAutoKick()
     autoKickCounter = autoKickCounter + 1
     local currentCounter = autoKickCounter
@@ -149,22 +248,16 @@ local function startAutoKick()
                 if not kickReady then return end
                 local kickCFrame = (kickReady:IsA("BasePart") and kickReady.CFrame) or kickReady:GetPivot()
 
-                if (hrp.Position - kickCFrame.Position).Magnitude > 5 then
-                    teleportTo(kickCFrame + Vector3.new(0, 3, 0))
-                end
-
+                if (hrp.Position - kickCFrame.Position).Magnitude > 5 then teleportTo(kickCFrame + Vector3.new(0, 3, 0)) end
                 task.wait(0.5)
-                local startPos = hrp.Position
-                local wasTeleported = false
+                
+                local startPos, wasTeleported = hrp.Position, false
                 local HUD = PlayerGui:FindFirstChild("HUD")
 
                 for i = 1, 150 do
                     task.wait(0.1)
                     if not char or not char.Parent or humanoid.Health <= 0 then return end
-                    if (hrp.Position - startPos).Magnitude > 30 then
-                        wasTeleported = true
-                        break
-                    end
+                    if (hrp.Position - startPos).Magnitude > 30 then wasTeleported = true; break end
                     local kickButton = HUD and HUD:FindFirstChild("KickButton")
                     if kickButton and kickButton.Visible then
                         Network.rev_KickEvent:FireServer(kickValues[kickMode] or 1)
@@ -175,18 +268,12 @@ local function startAutoKick()
                 if not wasTeleported then return end
                 task.wait(0.5)
 
-                local monsterFound = false
-                local spawnedMonster = nil
+                local monsterFound, spawnedMonster = false, nil
                 for i = 1, 40 do
                     task.wait(0.2)
                     for _, obj in pairs(workspace.Debris:GetChildren()) do
-                        if obj:IsA("Model") and obj.PrimaryPart then
-                            local dist = (obj.PrimaryPart.Position - hrp.Position).Magnitude
-                            if dist < 60 then
-                                monsterFound = true
-                                spawnedMonster = obj
-                                break
-                            end
+                        if obj:IsA("Model") and obj.PrimaryPart and (obj.PrimaryPart.Position - hrp.Position).Magnitude < 60 then
+                            monsterFound, spawnedMonster = true, obj; break
                         end
                     end
                     if monsterFound then break end
@@ -194,27 +281,22 @@ local function startAutoKick()
 
                 if monsterFound and spawnedMonster then
                     task.wait(0.5)
-
-                    local isMutationDesired = false
-                    local hasMutationFilter = false
+                    local isMutationDesired, hasMutationFilter = false, false
                     for mutation, enabled in pairs(targetMutations) do
                         if enabled then
                             hasMutationFilter = true
                             if mutation == "Normal" or string.find(string.lower(spawnedMonster.Name), string.lower(mutation)) then
-                                isMutationDesired = true
-                                break
+                                isMutationDesired = true; break
                             end
                         end
                     end
 
-                    local isPetDesired = false
-                    local hasPetFilter = false
+                    local isPetDesired, hasPetFilter = false, false
                     for petName, enabled in pairs(targetPets) do
                         if enabled then
                             hasPetFilter = true
                             if string.find(string.lower(spawnedMonster.Name), string.lower(petName)) then
-                                isPetDesired = true
-                                break
+                                isPetDesired = true; break
                             end
                         end
                     end
@@ -225,11 +307,11 @@ local function startAutoKick()
                         local waves = workspace:FindFirstChild("Waves")
                         local wavePos = waves and (waves.Position or waves:GetPivot().Position)
                         if wavePos then tweenMove(hrp, humanoid, wavePos) end
-                    elseif spawnedMonster and not spawnedMonster:GetAttribute("WebhookSent") then
-                        spawnedMonster:SetAttribute("WebhookSent", true)
-                        local monsterName = spawnedMonster.Name
-                        local mutationStr = "Normal"
-                        sendWebhook("👀 Target Found!", "**Pet:** "..monsterName.."\n**Player:** "..player.Name, 3447003, false)
+                    else
+                        if not spawnedMonster:GetAttribute("WebhookSent") then
+                            spawnedMonster:SetAttribute("WebhookSent", true)
+                            sendWebhook("👀 Pet Encontrado!", "**Pet:** "..spawnedMonster.Name.."\n**Jogador:** "..player.Name, 3447003)
+                        end
                         tweenMove(hrp, humanoid, kickCFrame.Position)
                     end
                 end
@@ -239,7 +321,6 @@ local function startAutoKick()
     end)
 end
 
--- ==================== AUTO TRAIN (ORIGINAL) ====================
 local function startAutoTrain()
     autoTrainCounter = autoTrainCounter + 1
     local currentCounter = autoTrainCounter
@@ -250,12 +331,8 @@ local function startAutoTrain()
                 local humanoid = char and char:FindFirstChild("Humanoid")
                 local currentTool = char and char:FindFirstChildOfClass("Tool")
                 if not currentTool and humanoid then
-                    local backpack = player:FindFirstChild("Backpack")
-                    for _, tool in pairs(backpack:GetChildren()) do
-                        if tool:IsA("Tool") then
-                            humanoid:EquipTool(tool)
-                            break
-                        end
+                    for _, tool in pairs(player:FindFirstChild("Backpack"):GetChildren()) do
+                        if tool:IsA("Tool") then humanoid:EquipTool(tool); break end
                     end
                 elseif currentTool then
                     currentTool:Activate()
@@ -266,7 +343,6 @@ local function startAutoTrain()
     end)
 end
 
--- ==================== AUTO COLLECT & SELL ====================
 local function startAutoCollect()
     task.spawn(function()
         while autoCollectEnabled do
@@ -275,12 +351,10 @@ local function startAutoCollect()
                 if buttons then
                     for i = 1, 30 do
                         local slot = buttons:FindFirstChild("Slot" .. i)
-                        if slot then
-                            local part = slot:IsA("BasePart") and slot or slot:FindFirstChildWhichIsA("BasePart")
-                            if part then
-                                teleportTo(part.CFrame + Vector3.new(0,2,0))
-                                Network.rev_B_Collect:FireServer(i)
-                            end
+                        local part = slot and (slot:IsA("BasePart") and slot or slot:FindFirstChildWhichIsA("BasePart"))
+                        if part then
+                            teleportTo(part.CFrame + Vector3.new(0,2,0))
+                            Network.rev_B_Collect:FireServer(i)
                         end
                     end
                 end
@@ -312,223 +386,117 @@ local function startAutoSell()
     end)
 end
 
--- ==================== RAYFIELD INTERFACE ====================
+-- ==================== RAYFIELD (KEY SYSTEM ATIVADO) ====================
+
 local Window = Rayfield:CreateWindow({
-    Name = "ROCHA HUB",
-    LoadingTitle = "ROCHA HUB",
-    LoadingSubtitle = "Kick a Lucky Block",
-    ConfigurationSaving = {Enabled = true, FolderName = "RochaHub", FileName = "Config"}
+    Name = "💎 ROCHA HUB PREMIUM",
+    LoadingTitle = "Verificando Licença...",
+    LoadingSubtitle = "Aguarde...",
+    ConfigurationSaving = {Enabled = false},
+    
+    -- =========================================
+    -- AQUI FICA A CONFIGURAÇÃO DA KEY
+    -- =========================================
+    KeySystem = true, 
+    KeySettings = {
+        Title = "Rocha Hub | Verificação",
+        Subtitle = "Sistema Premium",
+        Note = "Acesse o Discord para comprar sua Key!",
+        FileName = "RochaPremiumKeySaved", -- Nome do arquivo que salva no PC do cliente
+        SaveKey = true, -- O cliente não precisa digitar a Key na segunda vez!
+        GrabKeyFromSite = false, -- Deixado false para testar a chave direta abaixo
+        Key = {"ROCHA-TESTE", "ROCHA-VIP"} -- Digite "ROCHA-TESTE" para entrar!
+    }
 })
 
 local MainTab = Window:CreateTab("🏠 Main")
 local CollectTab = Window:CreateTab("💰 Collect")
-local UpgradeTab = Window:CreateTab("⬆️ Upgrades")
-local BuyTab = Window:CreateTab("🛒 Shop")
-local SellTab = Window:CreateTab("💸 Sell")
-local InfoTab = Window:CreateTab("⚙️ Info")
+local SellTab = Window:CreateTab("💸 Auto Sell")
+local InfoTab = Window:CreateTab("⚙️ Info/Webhook")
 
--- ==================== MAIN TAB ====================
-MainTab:CreateSection("🎯 Alvos")
-
--- ==================== PETS SECTION COM CHECKBOXES ====================
-MainTab:CreateLabel("Selecione os Pets:")
-
-local petCheckboxes = {}
-local petToggleStates = {}
-
-for rarity, pets in pairs(petData) do
-    MainTab:CreateLabel("━━━ " .. rarity .. " ━━━")
-    for _, pet in ipairs(pets) do
-        local label = "[" .. rarity .. "] " .. pet
-        petCheckboxes[label] = {pet = pet, rarity = rarity}
-        petToggleStates[pet] = false
-        
-        MainTab:CreateToggle({
-            Name = pet,
-            CurrentValue = false,
-            Callback = function(value)
-                petToggleStates[pet] = value
-                targetPets[pet] = value
-                if value then
-                    print("✅ Pet selecionado: " .. pet)
-                else
-                    print("❌ Pet removido: " .. pet)
-                end
-            end
-        })
-    end
-end
-
--- ==================== MUTATIONS SECTION COM CHECKBOXES ====================
-MainTab:CreateSection("🧬 Mutações")
-MainTab:CreateLabel("Selecione as Mutações:")
-
-local mutationToggleStates = {}
-for _, mutation in ipairs(mutationList) do
-    mutationToggleStates[mutation] = false
-    MainTab:CreateToggle({
-        Name = mutation,
-        CurrentValue = false,
-        Callback = function(value)
-            mutationToggleStates[mutation] = value
-            targetMutations[mutation] = value
-            if value then
-                print("✅ Mutação selecionada: " .. mutation)
-            else
-                print("❌ Mutação removida: " .. mutation)
-            end
-        end
-    })
-end
-
--- ==================== AUTO FEATURES ====================
-MainTab:CreateSection("⚙️ Automações")
-
-MainTab:CreateToggle({
-    Name = "Auto Kick",
-    CurrentValue = false,
-    Callback = function(v)
-        autoKickEnabled = v
-        if v then
-            startAutoKick()
-            print("✅ Auto Kick ativado")
-        else
-            print("❌ Auto Kick desativado")
-        end
-    end
-})
-
-MainTab:CreateToggle({
-    Name = "Auto Train",
-    CurrentValue = false,
-    Callback = function(v)
-        autoTrainEnabled = v
-        if v then
-            startAutoTrain()
-            print("✅ Auto Train ativado")
-        else
-            print("❌ Auto Train desativado")
-        end
-    end
-})
-
-MainTab:CreateToggle({
-    Name = "Velocidade Customizada",
-    CurrentValue = false,
-    Callback = function(v)
-        useCustomSpeed = v
-    end
-})
-
-MainTab:CreateSlider({
-    Name = "Velocidade",
-    Range = {16, 500},
-    Increment = 1,
-    CurrentValue = 50,
-    Callback = function(v)
-        customSpeed = v
-    end
-})
-
+MainTab:CreateSection("🎯 SELEÇÃO DE ALVOS PREMIUM")
 MainTab:CreateButton({
-    Name = "TP KickReady",
+    Name = "🛠️ Abrir Gerenciador de Pets",
     Callback = function()
-        pcall(function()
-            teleportTo(workspace.Areas.KickReady.CFrame + Vector3.new(0,5,0))
-        end)
+        MainFrame.Visible = true
+        LoadPetsForRarity("OG")
     end
 })
 
-MainTab:CreateDropdown({
-    Name = "Kick Mode",
-    Options = {"Perfect", "Excellent", "Great", "Mid", "Bad"},
-    Default = "Perfect",
-    Callback = function(v)
-        kickMode = v
-    end
-})
+MainTab:CreateSection("🧬 Mutações")
+for _, mutation in ipairs(mutationList) do
+    MainTab:CreateToggle({Name = mutation, CurrentValue = false, Callback = function(v) targetMutations[mutation] = v end})
+end
 
--- ==================== COLLECT TAB ====================
-CollectTab:CreateSection("💰 Auto Collect")
+MainTab:CreateSection("⚙️ Automação Principal")
+MainTab:CreateToggle({Name = "🔥 Auto Kick", CurrentValue = false, Callback = function(v) autoKickEnabled = v; if v then startAutoKick() end end})
+MainTab:CreateToggle({Name = "💪 Auto Train", CurrentValue = false, Callback = function(v) autoTrainEnabled = v; if v then startAutoTrain() end end})
+
+MainTab:CreateSection("🎯 Velocidade & Teleporte")
+MainTab:CreateToggle({Name = "Velocidade Customizada", CurrentValue = false, Callback = function(v) useCustomSpeed = v end})
+MainTab:CreateSlider({Name = "⚡ Velocidade", Range = {16, 500}, Increment = 1, CurrentValue = 50, Callback = function(v) customSpeed = v end})
+MainTab:CreateButton({Name = "TP para KickReady", Callback = function() pcall(function() teleportTo(workspace.Areas.KickReady.CFrame + Vector3.new(0, 5, 0)) end) end})
 
 CollectTab:CreateToggle({
-    Name = "Auto Collect",
+    Name = "💰 Auto Collect",
     CurrentValue = false,
     Callback = function(v)
         autoCollectEnabled = v
         if v then
+            if not lockedPlot then
+                local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local closest = math.huge
+                    for _, plot in pairs(workspace.Plots:GetChildren()) do
+                        local dist = (hrp.Position - plot:GetPivot().Position).Magnitude
+                        if dist < closest then closest, lockedPlot = dist, plot end
+                    end
+                end
+            end
             startAutoCollect()
         end
     end
 })
 
--- ==================== SELL TAB ====================
-SellTab:CreateSection("💸 Auto Sell")
-
-SellTab:CreateLabel("Selecione Pets para Vender:")
-local sellPetsFormatted = {}
-for rarity, pets in pairs(petData) do
-    for _, pet in ipairs(pets) do
-        table.insert(sellPetsFormatted, "[" .. rarity .. "] " .. pet)
+SellTab:CreateSection("💸 Brainrots para Vender")
+for _, rarity in ipairs(rarityList) do
+    SellTab:CreateSection(rarity)
+    for _, pet in ipairs(petData[rarity]) do
+        SellTab:CreateToggle({
+            Name = pet,
+            CurrentValue = false,
+            Callback = function(v)
+                targetSellPets[pet] = v
+            end
+        })
     end
 end
-
-SellTab:CreateDropdown({
-    Name = "Pets para Vender",
-    Options = sellPetsFormatted,
-    Multi = true,
-    Default = {},
-    Callback = function(values)
-        targetSellPets = {}
-        for _, v in ipairs(values) do
-            local petName = v:match("%]%s(.+)")
-            if petName then
-                targetSellPets[petName] = true
-            end
-        end
-    end
-})
-
 SellTab:CreateToggle({
     Name = "Auto Sell",
     CurrentValue = false,
     Callback = function(v)
         autoSellEnabled = v
-        if v then
-            startAutoSell()
-        end
+        if v then startAutoSell() end
     end
 })
 
--- ==================== INFO TAB ====================
-InfoTab:CreateSection("ℹ️ Informações")
-
-InfoTab:CreateLabel("ROCHA HUB v1.0")
-InfoTab:CreateLabel("Sistema completo com seleção de Pets e Mutações")
-InfoTab:CreateLabel("━━━━━━━━━━━━━━━━━━━━")
-InfoTab:CreateLabel("Pets Selecionados: 0")
-InfoTab:CreateLabel("Mutações Selecionadas: 0")
-
-local function updateInfoTab()
-    local selectedPets = 0
-    local selectedMutations = 0
-    
-    for _, enabled in pairs(targetPets) do
-        if enabled then selectedPets = selectedPets + 1 end
+InfoTab:CreateSection("🔔 Webhook Discord")
+InfoTab:CreateToggle({
+    Name = "Ativar Notificações",
+    CurrentValue = false,
+    Callback = function(v) webhookEnabled = v end
+})
+InfoTab:CreateInput({
+    Name = "URL do Webhook",
+    PlaceholderText = "https://discord.com/api/webhooks/...",
+    RemoveTextOnFocusLost = false,
+    Callback = function(text) webhookURL = text end
+})
+InfoTab:CreateButton({
+    Name = "Testar Webhook",
+    Callback = function()
+        sendWebhook("🧪 Teste ROCHA HUB", "As notificações estão funcionando perfeitamente!", 314153, true)
     end
-    
-    for _, enabled in pairs(targetMutations) do
-        if enabled then selectedMutations = selectedMutations + 1 end
-    end
-    
-    InfoTab:CreateLabel("Pets Selecionados: " .. selectedPets)
-    InfoTab:CreateLabel("Mutações Selecionadas: " .. selectedMutations)
-end
-
-Rayfield:Notify({
-    Title = "ROCHA HUB",
-    Content = "✅ Carregado com sucesso!\n✨ Sistema completo restaurado\n📝 Selecione Pets e Mutações com os checkboxes",
-    Duration = 5
 })
 
-print("✅ ROCHA HUB - Rayfield | Sistema completo restaurado")
+Rayfield:Notify({Title = "💎 ROCHA HUB PREMIUM", Content = "Autenticado com sucesso. Bem-vindo!", Duration = 5})
