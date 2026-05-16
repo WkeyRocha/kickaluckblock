@@ -1,7 +1,4 @@
--- ==========================================================
---               ROCHA HUB PREMIUM - OFFLINE VERSION
---             (Lógica Original 100% Restaurada)
--- ==========================================================
+
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -59,7 +56,6 @@ local petData = {
 local rarityList = {"Common", "Rare", "Epic", "Legendary", "Mythic", "Godly", "Secret", "Divine", "Hacked", "OG", "Celestial"}
 local mutationList = {"Normal", "Golden", "Diamond", "Plasma", "Molten", "Radioactive", "Shadow", "Electrified", "Rainbow", "Virus"}
 
--- Inicia todos como false
 for _, pets in pairs(petData) do
     for _, pet in ipairs(pets) do targetPets[pet] = false end
 end
@@ -83,7 +79,7 @@ local function tweenMove(hrp, humanoid, targetPos)
     if hrp and hrp.Parent then hrp.Anchored = false end
 end
 
--- ==================== GERENCIADOR DE PETS NATIVO (INTACTO) ====================
+-- ==================== GERENCIADOR DE PETS NATIVO ====================
 local Theme = {
     Bg = Color3.fromRGB(18, 18, 24),
     Panel = Color3.fromRGB(25, 25, 33),
@@ -220,7 +216,7 @@ for _, rarity in ipairs(rarityList) do
 end
 LeftPanel.CanvasSize = UDim2.new(0, 0, 0, #rarityList * 41)
 
--- ==================== AUTO KICK (LÓGICA ORIGINAL RESTAURADA) ====================
+-- ==================== AUTO KICK ====================
 local function startAutoKick()
     autoKickCounter = autoKickCounter + 1
     local currentCounter = autoKickCounter
@@ -265,15 +261,17 @@ local function startAutoKick()
 
                 local monsterFound = false
                 local spawnedMonster = nil
+                local closestDist = 60
                 
                 for i = 1, 40 do
                     task.wait(0.2)
                     for _, obj in pairs(workspace.Debris:GetChildren()) do
                         if obj:IsA("Model") and obj.PrimaryPart then
-                            if (obj.PrimaryPart.Position - hrp.Position).Magnitude < 60 then
+                            local dist = (obj.PrimaryPart.Position - hrp.Position).Magnitude
+                            if dist < closestDist then
+                                closestDist = dist
                                 monsterFound = true
                                 spawnedMonster = obj
-                                break
                             end
                         end
                     end
@@ -283,9 +281,6 @@ local function startAutoKick()
                 if monsterFound and spawnedMonster then
                     task.wait(0.5)
                     
-                    -- ========================================================
-                    -- LÓGICA DE FILTRO 100% ORIGINAL (Do script desofuscado)
-                    -- ========================================================
                     local isMutationDesired = false
                     local hasMutationFilter = false
 
@@ -296,15 +291,12 @@ local function startAutoKick()
                                 isMutationDesired = true
                                 break
                             end
-                            
-                            -- AQUI ESTAVA O SEGREDO: O jogo cria a mutação como CHILD do monstro
                             for _, child in pairs(spawnedMonster:GetChildren()) do
                                 if string.find(string.lower(child.Name), string.lower(mutation)) then
                                     isMutationDesired = true
                                     break
                                 end
                             end
-                            
                             if isMutationDesired then break end
                         end
                     end
@@ -315,7 +307,6 @@ local function startAutoKick()
                     for petName, enabled in pairs(targetPets) do
                         if enabled then
                             hasPetFilter = true
-                            -- '1, true' faz uma busca exata, ignorando simbolos como [ ou ] do jogo
                             if string.find(string.lower(spawnedMonster.Name), string.lower(petName), 1, true) then
                                 isPetDesired = true
                                 break
@@ -333,13 +324,29 @@ local function startAutoKick()
 
                     if shouldFlee then
                         local waves = workspace:FindFirstChild("Waves")
-                        local wavePos = waves and (waves.Position or waves:GetPivot().Position)
-                        if wavePos then tweenMove(hrp, humanoid, wavePos) end
+                        local wavePos = nil
+                        if waves then
+                            if waves:IsA("BasePart") then
+                                wavePos = waves.Position
+                            elseif waves:IsA("Model") then
+                                wavePos = waves:GetPivot().Position
+                            else
+                                local part = waves:FindFirstChildWhichIsA("BasePart", true)
+                                if part then wavePos = part.Position end
+                            end
+                        end
+
+                        if wavePos then 
+                            tweenMove(hrp, humanoid, wavePos) 
+                        else
+                            tweenMove(hrp, humanoid, kickCFrame.Position)
+                        end
                     else
                         if not spawnedMonster:GetAttribute("WebhookSent") then
                             spawnedMonster:SetAttribute("WebhookSent", true)
                         end
                         tweenMove(hrp, humanoid, kickCFrame.Position)
+                        task.wait(1.5) 
                     end
                 end
             end)
@@ -427,7 +434,7 @@ local Window = Rayfield:CreateWindow({
     KeySettings = {
         Title = "Rocha Hub | Premium",
         Subtitle = "Sistema de Verificação",
-        Note = "Use a chave fornecida: ROCHA-VIP ou ROCHA-TESTE",
+        Note = "Use a chave fornecida: ROCHA-VIP",
         FileName = "RochaPremiumKeySaved", 
         SaveKey = true, 
         GrabKeyFromSite = false,
