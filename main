@@ -1,5 +1,3 @@
-
-
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Players = game:GetService("Players")
@@ -40,7 +38,7 @@ local autoKickEnabled, autoTrainEnabled, autoCollectEnabled, autoSellEnabled = f
 local autoKickCounter, autoTrainCounter = 0, 0
 local lockedPlot = nil
 
--- Base de dados conhecida (O scanner adicionará o resto automaticamente)
+-- LISTA DE PETS (COM ETERNAL)
 local petData = {
     Common = {"Noobini Pizzanini", "Tim Cheese", "LiriIi LariIa", "Talpa Di Fero", "Fruli Frula", "pipi Kiwi"},
     Rare = {"Gangster Footera", "Bobrito Bandito", "Boneca Ambalabu", "Ta Ta Ta Ta Sahur", "Ballerina Cappuccina", "Brr Brr Patapim", "Cappuccino Assassino", "Cacto Hipopotamo"},
@@ -53,48 +51,11 @@ local petData = {
     Hacked = {"Alessio", "Tripi Tropi Tropa Tripa", "Torrtuginni Dragonfruitini", "Tictac Sahur", "Cactus Pingu", "Los Primos Blue", "La Vacca Saturno Saturnita", "Agaitihi La Palini"},
     OG = {"Karkerkar Kurkur", "Compactororni Diskaloni", "Blackhole Goat", "Cappuccino Clownino", "Nuclearo Dinossauro", "Los Nooo My Hotspotsitos", "Chillin Chilli", "Crazylone Pizaione", "Corn Sahur", "Meowl", "Strawberry Elephant"},
     Celestial = {"Dragonfrutina Dolphinita", "Guerriro Digitale", "Chicleteira Bicicleteira", "Pot Hotspot", "Krupuk Pagi Pagi", "Beluga Beluga", "Tralaledon", "Anpalı Babel", "Ketupat Kepat", "Mastodontico Telepiedone"},
-    Eternal = {} -- Pré-registro para evitar erros
+    Eternal = {"Eternal Pet 1", "Eternal Pet 2", "Eternal Pet 3", "Eternal Pet 4", "Eternal Pet 5"} -- Altere para os nomes reais se quiser
 }
 local rarityList = {"Common", "Rare", "Epic", "Legendary", "Mythic", "Godly", "Secret", "Divine", "Hacked", "OG", "Celestial", "Eternal"}
 local mutationList = {"Normal", "Golden", "Diamond", "Plasma", "Molten", "Radioactive", "Shadow", "Electrified", "Rainbow", "Virus"}
 
--- ==================== SCANNER INTELIGENTE DE NOVAS RARIDADES ====================
--- Essa função varre o jogo atrás de pets e raridades que não estão na lista acima!
-local function AutoDetectPetsFromGame()
-    pcall(function()
-        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("Model") then
-                -- Verifica se a pasta em que ele está parece uma configuração de Pets
-                local parent = obj.Parent
-                local grandParent = parent and parent.Parent
-                
-                if parent and grandParent and (grandParent.Name == "Pets" or grandParent.Name == "Brainrots" or string.find(string.lower(grandParent.Name), "pet")) then
-                    local rarityName = parent.Name -- Geralmente o nome da pasta é a Raridade (Ex: Eternal)
-                    
-                    -- Se for uma raridade nova, cria ela
-                    if rarityName and rarityName ~= "Pets" then
-                        if not petData[rarityName] then 
-                            petData[rarityName] = {} 
-                        end
-                        if not table.find(rarityList, rarityName) then 
-                            table.insert(rarityList, rarityName) 
-                        end
-                        
-                        -- Adiciona o pet na lista da raridade correspondente
-                        if not table.find(petData[rarityName], obj.Name) then 
-                            table.insert(petData[rarityName], obj.Name) 
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- Roda o Scanner ANTES de construir as UIs!
-AutoDetectPetsFromGame()
-
--- Inicia todos como false baseados na lista atualizada
 for _, pets in pairs(petData) do
     for _, pet in ipairs(pets) do targetPets[pet] = false end
 end
@@ -158,7 +119,7 @@ TitleText.BackgroundTransparency = 1
 TitleText.Position = UDim2.new(0, 20, 0, 0)
 TitleText.Size = UDim2.new(0, 300, 1, 0)
 TitleText.Font = Enum.Font.GothamBold
-TitleText.Text = "💎 ROCHA HUB | Pet Manager (Auto-Update)"
+TitleText.Text = "💎 ROCHA HUB | Pet Manager"
 TitleText.TextColor3 = Theme.Accent
 TitleText.TextSize = 16
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
@@ -200,16 +161,6 @@ local function LoadPetsForRarity(rarity)
     for _, child in pairs(RightPanel:GetChildren()) do if child:IsA("Frame") then child:Destroy() end end
     local pets = petData[rarity] or {}
     
-    if #pets == 0 then
-        local emptyText = Instance.new("TextLabel")
-        emptyText.Parent = RightPanel
-        emptyText.Size = UDim2.new(1, 0, 0, 40)
-        emptyText.BackgroundTransparency = 1
-        emptyText.Text = "Nenhum pet encontrado nessa raridade."
-        emptyText.TextColor3 = Theme.TextDim
-        emptyText.Font = Enum.Font.GothamSemibold
-    end
-
     for _, petName in ipairs(pets) do
         local PetRow = Instance.new("Frame")
         PetRow.Parent = RightPanel
@@ -328,6 +279,21 @@ local function startAutoKick()
                 end
 
                 if monsterFound and spawnedMonster then
+                    -- ================== LIVE SCANNER ==================
+                    -- Se o script não conhecer o nome do pet, ele adiciona automaticamente
+                    -- no "Eternal" para você poder vender/selecionar na hora.
+                    local pName = spawnedMonster.Name
+                    local known = false
+                    for _, pets in pairs(petData) do
+                        if table.find(pets, pName) then known = true break end
+                    end
+                    if not known and pName ~= "" then
+                        table.insert(petData["Eternal"], pName)
+                        targetPets[pName] = false
+                        targetSellPets[pName] = false
+                    end
+                    -- ==================================================
+
                     task.wait(0.5)
                     
                     local isMutationDesired = false
@@ -475,7 +441,7 @@ end
 -- ==================== RAYFIELD (KEY OFFLINE) ====================
 local Window = Rayfield:CreateWindow({
     Name = "💎 ROCHA HUB PREMIUM",
-    LoadingTitle = "Verificando Licença...",
+    LoadingTitle = "Carregando Módulos...",
     LoadingSubtitle = "Offline Mode",
     ConfigurationSaving = {Enabled = false},
     
@@ -540,7 +506,6 @@ CollectTab:CreateToggle({
 })
 
 SellTab:CreateSection("💸 Brainrots para Vender")
--- O menu de Auto-Sell agora é montado dinamicamente com base no Scanner!
 for _, rarity in ipairs(rarityList) do
     local petsInRarity = petData[rarity]
     if petsInRarity and #petsInRarity > 0 then
@@ -564,4 +529,4 @@ SellTab:CreateToggle({
     end
 })
 
-Rayfield:Notify({Title = "💎 ROCHA HUB", Content = "Autenticado e Banco de Pets atualizado!", Duration = 5})
+Rayfield:Notify({Title = "💎 ROCHA HUB", Content = "Autenticado com sucesso!", Duration = 5})
